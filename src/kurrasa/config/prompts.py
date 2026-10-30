@@ -84,15 +84,18 @@ Sections:
 {blanks}"""
 
 
-def build_requirement_judge_prompt(tender: str, requirement: str) -> str:
-    return f"""Below is a tender booklet (it may be in Arabic). Does it state this requirement, in any wording or language?
+def build_requirements_judge_prompt(tender: str, requirements: dict[str, str]) -> str:
+    listing = "\n".join(f"- {rid}: {text}" for rid, text in requirements.items())
+    return f"""Below is a tender booklet (it may be in Arabic). Which of these requirements does it state, in any wording
+or language? Only count a requirement if the tender clearly states it.
 
-Requirement: {requirement}
+Requirements:
+{listing}
 
 Tender:
 {tender}
 
-Answer YES or NO only."""
+Reply with a JSON list of the requirement IDs that are present, e.g. ["users", "odoo"], or [] if none."""
 
 
 def build_flag_judge_prompt(issues: list[str], flags: dict) -> str:

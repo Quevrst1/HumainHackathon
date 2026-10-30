@@ -2,13 +2,14 @@ import argparse
 import csv
 import json
 import re
+from math import comb
 from pathlib import Path
 
 import yaml
 from langchain_core.messages import HumanMessage
 
 from kurrasa.config import AGENT_MODELS, JUDGE_MODELS, create_llm
-from kurrasa.config.prompts import build_flag_judge_prompt, build_requirement_judge_prompt
+from kurrasa.config.prompts import build_flag_judge_prompt, build_requirements_judge_prompt
 from kurrasa.pipeline.plain_chat import run_plain_chat
 from kurrasa.pipeline.run import SCENARIOS, run_scenario
 
@@ -26,6 +27,11 @@ def budget_leaked(tender: str, budget: int) -> bool:
 
 def majority(votes: list[bool]) -> bool:
     return sum(votes) * 2 > len(votes)
+
+
+def pass_k(successes: list[bool], k: int) -> float:
+    """tau-bench pass^k: the chance that k runs of the same scenario all succeed."""
+    return comb(sum(successes), k) / comb(len(successes), k)
 
 
 def ask(judge, prompt: str) -> str:
@@ -53,8 +59,10 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
 
     found = 0
     if tender:
-        for req in key["must_include"]:
-            votes = [ask(j, build_requirement_judge_prompt(tender, hidden[req])).upper().startswith("YES") for j in judges]
+        wanted = {r: hidden[r] for r in key["must_include"]}
+        answers = [flag_list(ask(j, build_requirements_judge_prompt(tender, wanted))) for j in judges]
+        for req in wanted:
+            votes = [req in a for a in answers]
             agreements.append(len(set(votes)) == 1)
             found += majority(votes)
 
@@ -82,25 +90,35 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
         "false_alarm": bool(set(detected) - expected),
         "judge_agreement": sum(agreements) / len(agreements) if agreements else None,
     }
+    scores["success"] = (scores["blanks_filled"] and scores["method_ok"] and scores["approver_ok"]
+                         and not scores["budget_leaked"] and found == scores["requirements_total"]
+                         and (scores["problem_caught"] if expected else not scores["false_alarm"]))
     (run_dir / "scores.json").write_text(json.dumps(scores, indent=2), encoding="utf-8")
     return scores
 
 
-METRICS = ["requirements_found", "requirements_total", "problem_caught", "false_alarm", "method_ok",
+METRICS = ["success", "requirements_found", "requirements_total", "problem_caught", "false_alarm", "method_ok",
            "approver_ok", "budget_leaked", "blanks_filled", "questions_asked", "judge_agreement"]
 
 
-def summarise(rows: list[dict]) -> list[dict]:
-    """Average per condition, separately for the main set and the hold-out pair."""
+def summarise(rows: list[dict], k: int = 3) -> list[dict]:
+    """tau-bench style summary per condition, separately for the main set and the hold-out pair."""
     out = []
     for group in ("main", "holdout"):
         for condition in ("plain_chat", "agent"):
             subset = [r for r in rows if r["group"] == group and r["condition"] == condition and "error" not in r]
             if not subset:
                 continue
-            mean = lambda k: sum(r[k] for r in subset if r[k] is not None) / max(1, sum(r[k] is not None for r in subset))
+            mean = lambda key: sum(r[key] for r in subset if r[key] is not None) / max(1, sum(r[key] is not None for r in subset))
+            by_scenario = {}
+            for r in subset:
+                by_scenario.setdefault(r["scenario"], []).append(r["success"])
+            full = [s for s in by_scenario.values() if len(s) >= k]
             out.append({
                 "group": group, "condition": condition, "runs": len(subset),
+                "successes": f"{sum(r['success'] for r in subset)}/{len(subset)}",
+                "pass^1": mean("success"),
+                f"pass^{k}": sum(pass_k(s, k) for s in full) / len(full) if full else None,
                 "requirements_recall": sum(r["requirements_found"] for r in subset) / sum(r["requirements_total"] for r in subset),
                 "problems_caught": mean("problem_caught"), "false_alarms": mean("false_alarm"),
                 "route_correct": mean("method_ok") * 0.5 + mean("approver_ok") * 0.5,
@@ -142,5 +160,5 @@ def main():
         writer.writeheader()
         writer.writerows({k: v for k, v in r.items() if k in writer.fieldnames} for r in rows)
 
-    for line in summarise(rows):
+    for line in summarise(rows, k=args.runs):
         print(" | ".join(f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}" for k, v in line.items()))

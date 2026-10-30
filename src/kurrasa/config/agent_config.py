@@ -8,8 +8,9 @@ AGENT_MODELS = {
     "requester": GEMINI,   # simulated requester persona (tests only)
 }
 
-# Judge panel for evaluation; add other providers here once their keys are set up.
-JUDGE_MODELS = [GEMINI]
+# Judge panel: a different model from the agent, so it isn't grading its own writing.
+# Add other providers here once their keys are set up.
+JUDGE_MODELS = [{"provider": "gemini", "model": "gemini-3.5-flash-lite"}]
 
 MAX_QUESTIONS = 10   # ask_requester calls per interview
 MAX_STEPS = 60       # LLM calls per agent run
