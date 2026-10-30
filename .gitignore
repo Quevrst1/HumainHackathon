@@ -12,6 +12,5 @@ results/
 # Raw scraped pages from step 0 research (keep notes, not dumps)
 data/research/raw/
 
-# Local-only docs (design notes, README) — not pushed for now
-docs/
-README.md
+# Markdown files are local-only (docs, data log, company docs)
+*.md

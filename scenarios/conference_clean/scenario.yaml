@@ -1,0 +1,21 @@
+id: conference_clean
+pair: conference
+variant: clean
+type: non_tech
+category: events
+holdout: false
+opening_request: "We need an events company to run our annual client conference in about 4 months."
+requester:
+  name: Reem Al-Dosari
+  role: Marketing Manager
+  department: Marketing
+  personality: enthusiastic and well-prepared, cooperative on details
+hidden_requirements:
+  - {id: guests,    topic: attendance,   text: "300 guests, mostly client executives"}
+  - {id: venue,     topic: venue,        text: "hotel ballroom in Riyadh, one full day"}
+  - {id: av,        topic: production,   text: "stage, screens, sound, live streaming"}
+  - {id: catering,  topic: catering,     text: "breakfast, lunch and coffee breaks"}
+  - {id: bilingual, topic: language,     text: "Arabic/English simultaneous interpretation"}
+  - {id: branding,  topic: branding,     text: "branded materials and registration desk"}
+  - {id: budget,      topic: budget,              text: "budget is SAR 700,000"}
+stance: Flexible within the 4-month window.

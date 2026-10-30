@@ -1,0 +1,7 @@
+# Problem categories the evaluator scores against. Part of the test side only:
+# the agent never sees this file or the answer keys.
+vague_request:               "the request is too vague to tender without clarification"
+brand_lock:                  "the spec names a brand, which favours specific bidders"
+data_residency:              "personal data would be hosted or transferred outside Saudi Arabia"
+missing_acceptance_criteria: "the tender has no measurable acceptance criteria or service levels"
+unrealistic_timeline:        "the timeline does not fit the tender process"

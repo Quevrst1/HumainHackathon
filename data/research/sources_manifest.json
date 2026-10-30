@@ -1,0 +1,26 @@
+[
+  {
+    "file": "ksu_services_booklet_template.docx",
+    "url": "https://ps.ksu.edu.sa/sites/ps.ksu.edu.sa/files/users/user219/2025/%D9%86%D9%85%D9%88%D8%B0%D8%AC%20%D9%83%D8%B1%D8%A7%D8%B3%D8%A9%20(%D8%AE%D8%AF%D9%85%D8%A7%D8%AA).docx",
+    "fetched_at": "2026-10-30T18:28:49+00:00",
+    "sha256": "68990a9ebba802e2e06901b6ea3857176c743aaf1c64ba5a3f232bc74c7aa5ae"
+  },
+  {
+    "file": "nca_ecc2_2024_en.pdf",
+    "url": "https://cdn.nca.gov.sa/api/files/public/upload/86e09090-44e4-481f-bc28-355673607654_ECC--2024-EN.pdf",
+    "fetched_at": "2026-10-30T18:28:52+00:00",
+    "sha256": "146505199e5374d99302fc3d7e1fdc73b6e2f3292fefd535d5dd891294a81db1"
+  },
+  {
+    "file": "sdaia_pdpl_en.pdf",
+    "url": "https://sdaia.gov.sa/en/SDAIA/about/Documents/Personal%20Data%20English%20V2-23April2023-%20Reviewed-.pdf",
+    "fetched_at": "manual browser download",
+    "sha256": "f832f3024543ddf3efdbabbae14d6b302d07fcde8e3e9bb2ef7abbeb84b0790c"
+  },
+  {
+    "file": "sdaia_data_transfer_regulation_en.pdf",
+    "url": "sdaia.gov.sa (exact URL not recorded; file RegulationonPersonalDataEN.pdf)",
+    "fetched_at": "manual browser download",
+    "sha256": "f25901cb1bfc14529e7c6738a06ecdf3400b38de42b398317818efd828e8c7ce"
+  }
+]

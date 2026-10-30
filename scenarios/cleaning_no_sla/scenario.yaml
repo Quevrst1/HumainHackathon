@@ -1,0 +1,22 @@
+id: cleaning_no_sla
+pair: cleaning
+variant: problem
+type: non_tech
+category: facilities_service
+holdout: true
+opening_request: "Our cleaning contract ends soon. We need a new cleaning company for the offices, same as before."
+requester:
+  name: Abdullah Al-Shehri
+  role: Facilities Manager
+  department: Operations & Facilities
+  personality: easy-going, answers "the usual" or "like before" when asked about standards
+hidden_requirements:
+  - {id: sites,    topic: locations,     text: "Riyadh HQ (6 floors) and Dammam branch (2 floors)"}
+  - {id: hours,    topic: schedule,      text: "daily cleaning Sunday–Thursday, after 6pm"}
+  - {id: staff,    topic: staffing,      text: "8 cleaners in Riyadh, 3 in Dammam"}
+  - {id: supplies, topic: consumables,   text: "vendor provides all cleaning materials and washroom supplies"}
+  - {id: term,     topic: contract term, text: "12-month contract"}
+  - {id: budget,      topic: budget,              text: "budget is SAR 360,000"}
+stance: >
+  Never defines service levels or how quality is checked ("the usual"). If the agent
+  proposes measurable service levels, agrees to them.

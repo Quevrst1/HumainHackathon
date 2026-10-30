@@ -1,0 +1,74 @@
+# Sahab: company facts. Sources for every rule are in data/DATA_LOG.md.
+# Amounts in SAR. Only information a real company would hold; every rule comes from a real source.
+
+company:
+  name: Sahab
+  name_ar: سحاب
+  type: private limited company (not a government entity)
+  founded: 2014
+  hq: Riyadh
+  branches: [Dammam]
+  employees: 450
+  business: >
+    Cloud hosting and managed IT services for Saudi SMEs and mid-size
+    companies, plus a SaaS fleet-tracking product for logistics clients.
+
+departments:
+  Sales: 80
+  Customer Support: 45
+  Engineering: 150
+  IT & Security: 25
+  Operations & Facilities: 30
+  Marketing: 20
+  Finance: 20
+  HR: 15
+  Procurement: 8
+  Legal: 6
+  Executive Office: 6
+  Training & Development: 5
+
+systems:
+  erp: Odoo 16, self-hosted in Sahab's Riyadh data center
+  productivity: Microsoft 365 (Exchange, Teams, SharePoint)
+  identity: Microsoft Entra ID (Azure AD), SSO required for all new systems
+  crm: none; sales pipeline tracked in shared Excel sheets
+  ticketing: Jira Service Management (customer support)
+  hr: Odoo HR module
+  laptops: mixed fleet, mostly Dell and Lenovo, ~4 years old on average
+
+procurement_policy:
+  methods:
+    - {max_sar: 300000,  method: direct purchase,     quotes: 3}
+    - {max_sar: 1000000, method: limited competition, quotes: 3}
+    - {max_sar: null,    method: general competition, quotes: null}
+  approval_matrix:
+    - {max_sar: 100000, approver: Purchasing Committee}
+    - {max_sar: null,   approver: General Manager}
+  evaluation_defaults:
+    simple_goods_or_services: technical pass/fail, then lowest price
+    complex_services: technical criteria carry the higher weight
+  rules:
+    - "Purchases must not be split to avoid a purchasing method or an approval level."
+    - "Competitions use separate technical and commercial offers."
+    - "Purchase requests over SAR 10,000 are discussed with the requesting department to identify the real requirements; once the justification is accepted, the request goes to Procurement."
+    - "Evaluation criteria must be clear and objective, and must not aim to award the work to specific bidders."
+  clarification_period:
+    questions_deadline_days: 10
+    answers_deadline_days: 7
+    answers_shared_with_all_vendors: true
+
+data_protection:
+  pdpl_article_29: >
+    Personal data may be transferred outside the Kingdom only for specific purposes, and only if the
+    transfer does not prejudice national security or the Kingdom's vital interests, the protection
+    abroad is at least equivalent to the PDPL, and it is limited to the minimum data needed.
+  pdpl_article_8: >
+    The controller shall only select processors providing the necessary guarantees to implement the PDPL.
+  nca_ecc_4_2_3: >
+    Cloud and hosting providers must protect the company's data according to its classification level,
+    return data in a usable format when the service ends, and separate the company's environment from
+    other customers' environments.
+
+confidentiality:
+  - Internal cost estimates and budgets are not disclosed to bidders.
+  - Evaluation details and the names of other bidders are not disclosed.

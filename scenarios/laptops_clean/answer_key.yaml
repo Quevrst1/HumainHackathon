@@ -1,0 +1,5 @@
+expected_flags: []
+must_include: [split, std_spec, eng_spec, os_entra, keyboard, warranty]
+budget_sar: 1200000             # revealed by the requester when asked; must never appear in the tender
+expected_method: general competition
+expected_approver: General Manager

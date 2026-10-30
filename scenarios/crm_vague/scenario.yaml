@@ -1,0 +1,21 @@
+id: crm_vague
+pair: crm
+variant: problem
+type: tech
+category: software
+holdout: false
+opening_request: "Hi, we need a modern CRM for the sales team. Can you get this going?"
+requester:
+  name: Faisal Al-Otaibi
+  role: Sales Director
+  department: Sales
+  personality: busy and impatient, gives short answers, not technical; only shares a detail when asked about that topic
+hidden_requirements:          # revealed only when the agent asks about the topic
+  - {id: users,       topic: number of users,     text: "120 users: 80 sales reps and 40 customer support agents"}
+  - {id: odoo,        topic: integration,         text: "must integrate with our Odoo 16 ERP (customers, invoices)"}
+  - {id: bilingual,   topic: language,            text: "Arabic and English interface"}
+  - {id: ksa_hosting, topic: data hosting,        text: "customer data must be hosted inside Saudi Arabia"}
+  - {id: mobile,      topic: mobile / field work, text: "mobile app for field sales reps"}
+  - {id: golive,      topic: timeline,            text: "live within 6 months"}
+  - {id: budget,      topic: budget,              text: "budget is SAR 900,000"}
+stance: Says only "modern CRM" at first. Never volunteers requirements.

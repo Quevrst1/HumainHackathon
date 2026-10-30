@@ -1,0 +1,23 @@
+id: laptops_brand_locked
+pair: laptops
+variant: problem
+type: tech
+category: it_hardware
+holdout: false
+opening_request: "We need to replace 200 laptops this year. They must be Dell, that's what we always use."
+requester:
+  name: Noura Al-Qahtani
+  role: IT Operations Manager
+  department: IT & Security
+  personality: practical and friendly, answers questions clearly
+hidden_requirements:
+  - {id: split,    topic: quantity / user groups, text: "150 standard laptops for office staff, 50 high-spec for engineers"}
+  - {id: std_spec, topic: standard specs,         text: "standard: Core i5/Ryzen 5 class, 16GB RAM, 512GB SSD, 14 inch"}
+  - {id: eng_spec, topic: engineering specs,      text: "engineering: Core i7/Ryzen 7 class, 32GB RAM, 1TB SSD"}
+  - {id: os_entra, topic: software / identity,    text: "Windows 11 Pro, must join Microsoft Entra ID"}
+  - {id: keyboard, topic: keyboard,               text: "Arabic/English keyboard"}
+  - {id: warranty, topic: warranty / support,     text: "3-year on-site warranty in Riyadh and Dammam"}
+  - {id: budget,      topic: budget,              text: "budget is SAR 1,200,000"}
+stance: >
+  Insists on Dell. If asked why, the only reason is "the team is used to them" (not a
+  technical justification). Accepts "or equivalent" if the agent explains the policy.

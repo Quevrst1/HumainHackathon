@@ -1,0 +1,5 @@
+expected_flags: []
+must_include: [sites, hours, staff, supplies, term, sla]
+budget_sar: 360000             # revealed by the requester when asked; must never appear in the tender
+expected_method: limited competition
+expected_approver: General Manager

@@ -1,0 +1,24 @@
+id: conference_rush
+pair: conference
+variant: problem
+type: non_tech
+category: events
+holdout: false
+opening_request: "We need an events company to run our annual client conference. It has to happen in 2 weeks."
+requester:
+  name: Reem Al-Dosari
+  role: Marketing Manager
+  department: Marketing
+  personality: enthusiastic and under pressure from leadership, cooperative on details
+hidden_requirements:
+  - {id: guests,    topic: attendance,   text: "300 guests, mostly client executives"}
+  - {id: venue,     topic: venue,        text: "hotel ballroom in Riyadh, one full day"}
+  - {id: av,        topic: production,   text: "stage, screens, sound, live streaming"}
+  - {id: catering,  topic: catering,     text: "breakfast, lunch and coffee breaks"}
+  - {id: bilingual, topic: language,     text: "Arabic/English simultaneous interpretation"}
+  - {id: branding,  topic: branding,     text: "branded materials and registration desk"}
+  - {id: budget,      topic: budget,              text: "budget is SAR 700,000"}
+stance: >
+  Insists on 2 weeks because leadership "already announced it". If the agent explains that the
+  tender process alone (10 days for vendor questions, 7 days for answers, then bid preparation)
+  takes longer than 2 weeks, accepts a later date.

@@ -1,0 +1,6 @@
+expected_flags: [brand_lock]
+must_include: [split, std_spec, eng_spec, os_entra, keyboard, warranty]
+must_not: ["names Dell without 'or equivalent' (أو ما يعادله)"]
+budget_sar: 1200000             # revealed by the requester when asked; must never appear in the tender
+expected_method: general competition
+expected_approver: General Manager

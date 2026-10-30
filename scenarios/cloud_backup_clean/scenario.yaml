@@ -1,0 +1,24 @@
+id: cloud_backup_clean
+pair: cloud_backup
+variant: clean
+type: tech
+category: cloud_service
+holdout: false
+opening_request: >
+  We need an off-site cloud backup service for our Odoo ERP and file servers, hosted in a
+  Saudi data center since it includes customer data.
+requester:
+  name: Khalid Al-Harbi
+  role: Infrastructure Lead
+  department: IT & Security
+  personality: technical and precise, compliance-aware
+hidden_requirements:
+  - {id: volume,    topic: data volume,          text: "about 40 TB, growing ~20% per year"}
+  - {id: schedule,  topic: backup frequency,     text: "daily incremental, weekly full backups"}
+  - {id: retention, topic: retention,            text: "30 daily copies plus 12 monthly copies"}
+  - {id: rpo_rto,   topic: recovery targets,     text: "RPO 24 hours, RTO 8 hours"}
+  - {id: encrypt,   topic: security,             text: "encryption at rest and in transit"}
+  - {id: restore,   topic: testing,              text: "quarterly restore test with a report"}
+  - {id: budget,      topic: budget,              text: "budget is SAR 90,000"}
+data_contents: "Odoo holds customer personal data (names, phone numbers, addresses, invoices)."
+stance: Requires hosting inside Saudi Arabia.
