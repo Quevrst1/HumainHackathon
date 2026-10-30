@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.outputs import ChatResult
+from pydantic import ConfigDict
 
 from kurrasa.config.env import Env
 
@@ -52,8 +53,7 @@ class _TimeoutLLM(BaseChatModel):
     """Wraps any BaseChatModel with a hard timeout and automatic retry."""
     inner: object
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> ChatResult:
         return _with_timeout_and_retry(self.inner._generate, messages, stop=stop, run_manager=run_manager, **kwargs)
