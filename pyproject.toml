@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tender_agent"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "python-dotenv",
+    "pyyaml",
+    "langchain",
+    "langchain-google-genai",
+    "langchain-openai",
+    "langchain-ollama",
+    "langgraph",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
