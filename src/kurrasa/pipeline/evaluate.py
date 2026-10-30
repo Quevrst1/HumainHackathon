@@ -9,7 +9,7 @@ from langchain_core.messages import HumanMessage
 
 from kurrasa.config import AGENT_MODELS, JUDGE_MODELS, create_llm
 from kurrasa.config.prompts import build_flag_judge_prompt, build_requirement_judge_prompt
-from kurrasa.pipeline.baseline import run_baseline
+from kurrasa.pipeline.plain_chat import run_plain_chat
 from kurrasa.pipeline.run import SCENARIOS, run_scenario
 
 ARABIC_DIGITS = str.maketrans("0123456789,", "٠١٢٣٤٥٦٧٨٩٬")
@@ -94,7 +94,7 @@ def summarise(rows: list[dict]) -> list[dict]:
     """Average per condition, separately for the main set and the hold-out pair."""
     out = []
     for group in ("main", "holdout"):
-        for condition in ("baseline", "agent"):
+        for condition in ("plain_chat", "agent"):
             subset = [r for r in rows if r["group"] == group and r["condition"] == condition and "error" not in r]
             if not subset:
                 continue
@@ -111,7 +111,7 @@ def summarise(rows: list[dict]) -> list[dict]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run every scenario with the agent and the baseline, then score them.")
+    parser = argparse.ArgumentParser(description="Run every scenario with plain chat (A) and Kurrasa (C), then score them.")
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--scenarios", nargs="*", help="default: all scenarios")
     args = parser.parse_args()
@@ -119,18 +119,17 @@ def main():
     names = args.scenarios or sorted(p.name for p in SCENARIOS.iterdir() if p.is_dir())
     agent_llm = create_llm(**AGENT_MODELS["agent"])
     requester_llm = create_llm(**AGENT_MODELS["requester"])
-    baseline_llm = create_llm(**AGENT_MODELS["baseline"])
     judges = [create_llm(**cfg) for cfg in JUDGE_MODELS]
 
     rows = []
     for name in names:
         group = "holdout" if yaml.safe_load((SCENARIOS / name / "scenario.yaml").read_text(encoding="utf-8"))["holdout"] else "main"
         for i in range(1, args.runs + 1):
-            for condition in ("agent", "baseline"):
+            for condition in ("agent", "plain_chat"):
                 row = {"scenario": name, "group": group, "condition": condition, "run": i}
                 try:
                     run_dir = (run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False)
-                               if condition == "agent" else run_baseline(name, f"eval{i}", baseline_llm))
+                               if condition == "agent" else run_plain_chat(name, f"eval{i}", agent_llm, requester_llm))
                     row.update(score_run(run_dir, SCENARIOS / name, judges))
                 except Exception as e:   # one failed run (e.g. quota) shouldn't lose the rest
                     row["error"] = str(e)[:200]

@@ -61,11 +61,11 @@ def test_summarise_separates_holdout_and_conditions():
     rows = [
         {**base, "group": "main", "condition": "agent", "requirements_found": 6},
         {**base, "group": "main", "condition": "agent", "requirements_found": 3},
-        {**base, "group": "main", "condition": "baseline", "requirements_found": 0},
+        {**base, "group": "main", "condition": "plain_chat", "requirements_found": 0},
         {**base, "group": "holdout", "condition": "agent", "requirements_found": 6},
         {"group": "main", "condition": "agent", "error": "quota"},
     ]
     out = {(r["group"], r["condition"]): r for r in summarise(rows)}
     assert out[("main", "agent")]["runs"] == 2 and out[("main", "agent")]["requirements_recall"] == 0.75
-    assert out[("main", "baseline")]["requirements_recall"] == 0
+    assert out[("main", "plain_chat")]["requirements_recall"] == 0
     assert out[("holdout", "agent")]["runs"] == 1

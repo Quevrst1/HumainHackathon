@@ -67,21 +67,21 @@ Sections to write:
 {blanks}"""
 
 
-def build_baseline_prompt(opening_request: str, facts: dict) -> str:
+def build_plain_chat_prompt(facts: dict, today: date) -> str:
     blanks = "\n".join(f"- {name}: {meaning}" for name, meaning in BLANK_MEANINGS.items())
-    return f"""You are the procurement officer at Sahab. An employee sent this request: "{opening_request}"
-You cannot ask them anything. Using only the request and the company facts below, write the tender booklet sections
-in formal Arabic, list any problems you see with the request, and give the budget if the request states one.
+    return f"""You are a helpful assistant at Sahab. An employee needs help preparing a tender booklet for something
+they want to buy. Today's date is {today.isoformat()}.
 
-Company facts and rules:
+Company facts:
 ```yaml
 {yaml.safe_dump(facts, allow_unicode=True, sort_keys=False)}```
 
-Sections:
-{blanks}
+Chat with the employee to get what you need, asking one question per message. When you are ready, reply with
+JSON only, writing every section in formal Arabic and listing any problems you noticed:
+{{"sections": {{"TITLE": "...", ...one entry per section...}}, "issues": ["..."], "budget_sar": null}}
 
-Reply with JSON only, in this shape:
-{{"sections": {{"TITLE": "...", ...one entry per section...}}, "issues": ["..."], "budget_sar": null}}"""
+Sections:
+{blanks}"""
 
 
 def build_requirement_judge_prompt(tender: str, requirement: str) -> str:

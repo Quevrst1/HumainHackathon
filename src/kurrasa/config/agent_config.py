@@ -6,7 +6,6 @@ GEMINI = {"provider": "gemini", "model": "gemma-4-26b-a4b-it", "temperature": 0}
 AGENT_MODELS = {
     "agent":     GEMINI,   # the Kurrasa ReAct agent
     "requester": GEMINI,   # simulated requester persona (tests only)
-    "baseline":  GEMINI,   # one-shot baseline for comparison
 }
 
 # Judge panel for evaluation; add other providers here once their keys are set up.
