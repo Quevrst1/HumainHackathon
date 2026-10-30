@@ -14,10 +14,16 @@ def form_message(department: str, need: str, budget_sar: int) -> str:
     return f"Department: {department}\nRequest: {need}\nBudget: SAR {budget_sar:,}"
 
 
-def simulated_reviews(events: EventLog) -> list[dict]:
-    """Placeholder Finance and Legal sign-offs: always approve, clearly marked as simulated (not built yet)."""
+def simulated_reviews(events: EventLog, department: str) -> list[dict]:
+    """Placeholder Finance and Legal sign-offs, clearly marked as simulated (not built yet).
+    Edge case: Finance can't confirm its own budget (segregation of duties), so it escalates to the General Manager."""
+    if department == "Finance":
+        finance = {"step": "finance", "status": "escalated", "simulated": True,
+                   "note": "Finance raised this request, so it can't confirm its own budget: sent to the General Manager"}
+    else:
+        finance = {"step": "finance", "status": "approved", "note": "Budget confirmed", "simulated": True}
     reviews = [
-        {"step": "finance", "status": "approved", "note": "Budget confirmed", "simulated": True},
+        finance,
         {"step": "legal", "status": "approved", "note": "Contract terms approved", "simulated": True},
     ]
     for r in reviews:
@@ -60,6 +66,7 @@ class AgentRunner:
         self.out_dir: Path | None = None
 
     def start(self, department: str, need: str, budget_sar: int, attachments: list[Path] = ()):
+        self.department = department
         self.out_dir = self.out_root / "ui" / datetime.now().strftime("%Y%m%d-%H%M%S")
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.events.add_listener(jsonl_listener(self.out_dir / "events.jsonl"))
@@ -71,7 +78,7 @@ class AgentRunner:
             self.package = run_agent(self.llm, self.requester, self.events, load_facts(), load_template(),
                                      date.today(), f"SAHAB-{self.out_dir.name}")
             if self.package["stopped_reason"] == "finished":
-                self.package["reviews"] = simulated_reviews(self.events)
+                self.package["reviews"] = simulated_reviews(self.events, self.department)
             save_package(self.out_dir, self.package)
         except Exception as e:   # surface the failure in the UI instead of dying silently
             self.error = str(e)

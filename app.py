@@ -73,7 +73,8 @@ def review_panel(runner: AgentRunner):
     right.metric("Approver", route.get("approver", "—"))
 
     for review in package.get("reviews") or []:
-        st.write(f"✅ **{review['step'].title()}**: {review['note']} · _simulated, not built yet_")
+        mark = "✅" if review["status"] == "approved" else "↗️"
+        st.write(f"{mark} **{review['step'].title()}**: {review['note']} · _simulated, not built yet_")
 
     st.subheader("Issues")
     issues = package.get("issues") or []

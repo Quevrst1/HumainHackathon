@@ -44,3 +44,11 @@ def test_runner_adds_simulated_finance_and_legal_reviews(tmp_path):
     assert stages[-2:] == ["finance", "legal"]
     assert [r["step"] for r in runner.package["reviews"]] == ["finance", "legal"]
     assert all(r["simulated"] for r in runner.package["reviews"])
+
+
+def test_finance_cannot_confirm_its_own_budget():
+    from kurrasa.services.events import EventLog
+    from kurrasa.ui.bridge import simulated_reviews
+    finance = simulated_reviews(EventLog(), "Finance")[0]
+    assert finance["status"] == "escalated" and "General Manager" in finance["note"]
+    assert simulated_reviews(EventLog(), "Sales")[0]["status"] == "approved"
