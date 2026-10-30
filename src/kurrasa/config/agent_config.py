@@ -1,6 +1,7 @@
 """Default models and limits for the Kurrasa agent and its evaluation."""
 
-GEMINI = {"provider": "gemini", "model": "gemini-2.5-flash", "temperature": 0}
+# Gemma 4 via the Gemini API: free tier, native tool calling, fast (mixture-of-experts, 4B active)
+GEMINI = {"provider": "gemini", "model": "gemma-4-26b-a4b-it", "temperature": 0}
 
 AGENT_MODELS = {
     "agent":     GEMINI,   # the Kurrasa ReAct agent
