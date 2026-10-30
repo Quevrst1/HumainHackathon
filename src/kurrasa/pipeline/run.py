@@ -30,9 +30,15 @@ def run_scenario(scenario: str | None, run_id: str, agent_llm, requester_llm,
     requester = SimulatedRequester(load_scenario(scenario), requester_llm) if scenario else HumanRequester()
     package = run_agent(agent_llm, requester, events, load_facts(), load_template(), date.today(), f"SAHAB-{run_id}")
 
+    save_package(out, package)
+    return out
+
+
+def save_package(out: Path, package: dict):
+    """Write tender.txt (if finished), transcript.json and package.json for one run."""
+    package = dict(package)
     tender = package.pop("tender")
     if tender:
         (out / "tender.txt").write_text(tender, encoding="utf-8")
     (out / "transcript.json").write_text(json.dumps(package.pop("transcript"), ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "package.json").write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding="utf-8")
-    return out

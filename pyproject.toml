@@ -10,6 +10,7 @@ dependencies = [
     "python-dotenv",
     "pyyaml",
     "requests",
+    "streamlit",
     "langchain",
     "langchain-google-genai",
     "langchain-openai",
