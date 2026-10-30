@@ -50,5 +50,5 @@ class SimulatedRequester:
     def reply(self, question: str) -> Message:
         self.history.append(HumanMessage(content=question))
         answer = self.llm.invoke([SystemMessage(content=build_requester_prompt(self.scenario)), *self.history])
-        self.history.append(AIMessage(content=answer.content))
-        return Message(text=answer.content)
+        self.history.append(AIMessage(content=answer.text))
+        return Message(text=answer.text)

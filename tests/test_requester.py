@@ -51,3 +51,13 @@ def test_simulated_opening_and_history():
     r.reply("Which systems?")
     second_call_text = " ".join(str(m.content) for m in llm.calls[1])
     assert "How many users?" in second_call_text and "answer 1" in second_call_text
+
+
+class ThinkingLLM:
+    def invoke(self, messages):
+        return AIMessage(content=[{"type": "thinking", "thinking": "hmm"}, {"type": "text", "text": "About 120 users."}])
+
+
+def test_simulated_reads_only_text_from_thinking_models():
+    r = SimulatedRequester(scenario("crm_vague"), ThinkingLLM())
+    assert r.reply("How many users?").text == "About 120 users."

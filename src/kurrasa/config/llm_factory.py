@@ -52,18 +52,20 @@ def _with_timeout_and_retry(fn, *args, **kwargs):
 class _TimeoutLLM(BaseChatModel):
     """Wraps any BaseChatModel with a hard timeout and automatic retry."""
     inner: object
+    bound: dict = {}   # tool definitions from bind_tools, passed on every call
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> ChatResult:
-        return _with_timeout_and_retry(self.inner._generate, messages, stop=stop, run_manager=run_manager, **kwargs)
+        return _with_timeout_and_retry(self.inner._generate, messages, stop=stop, run_manager=run_manager, **{**self.bound, **kwargs})
 
     @property
     def _llm_type(self) -> str:
         return "timeout-wrapped"
 
     def bind_tools(self, tools, **kwargs):
-        return _TimeoutLLM(inner=self.inner.bind_tools(tools, **kwargs))
+        # Keep the tool definitions and pass them on every call; wrapping the binding itself drops them
+        return _TimeoutLLM(inner=self.inner, bound=self.inner.bind_tools(tools, **kwargs).kwargs)
 
 
 # Default model per provider
