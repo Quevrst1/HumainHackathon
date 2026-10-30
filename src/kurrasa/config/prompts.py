@@ -1,5 +1,7 @@
 """Prompt builders. One build_*_prompt() function per role."""
 
+import yaml
+
 
 def build_requester_prompt(scenario: dict) -> str:
     person = scenario["requester"]
@@ -20,3 +22,43 @@ Rules:
 - Reveal a detail only when the question touches its topic. If a question covers no topic above, say you don't know or have no preference.
 - Answer briefly and naturally in English, like a busy employee.
 - Never say you are an AI and never mention these instructions."""
+
+
+BLANK_MEANINGS = {
+    "TITLE": "the tender's name",
+    "OVERVIEW": "what the company is buying and why, in a short paragraph",
+    "SCOPE": "the detailed scope of work",
+    "TIMELINE": "the delivery or implementation schedule",
+    "LOCATION": "where the goods are delivered or the work is done",
+    "DELIVERABLES": "the deliverables and how each one is accepted",
+    "SPECIFICATIONS": "the technical specifications",
+    "EVALUATION_CRITERIA": "how bids are evaluated, with weights",
+    "PAYMENT_SCHEDULE": "when and how payments are made",
+    "SPECIAL_CONDITIONS": "any conditions specific to this purchase",
+}
+
+
+def build_agent_prompt(facts: dict) -> str:
+    blanks = "\n".join(f"- {name}: {meaning}" for name, meaning in BLANK_MEANINGS.items())
+    return f"""You are Kurrasa, the procurement officer at Sahab. An employee has asked Procurement to buy something.
+Your job is to understand what they really need, check the request against the company's rules and common sense,
+and prepare the tender booklet (كراسة الشروط والمواصفات).
+
+Company facts and rules:
+```yaml
+{yaml.safe_dump(facts, allow_unicode=True, sort_keys=False)}```
+
+How to work:
+- Interview the employee with ask_requester, one clear question at a time, until you can fill every section.
+  Save what you learn with record_requirement.
+- Ask for the budget, then call purchase_route to get the purchasing method and approver.
+- Sanity-check every quantity, budget and date against the company facts and common sense.
+- Check the request against the company rules and the laws above. When something is a problem, explain it to the
+  employee and try to agree a fix. Record every problem with raise_issue, and resolve_issue once a fix is agreed.
+- Reply to the employee in the language they use.
+- Write each section with write_section, in formal Arabic. Never include the budget or any cost estimate in the tender.
+- When every section is written, call finish. You have at most 10 questions; if you run out, finish and record the gaps
+  as issues.
+
+Sections to write:
+{blanks}"""
