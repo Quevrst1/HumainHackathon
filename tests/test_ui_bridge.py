@@ -32,3 +32,15 @@ def test_runner_asks_then_finishes(tmp_path):
     assert [m["role"] for m in runner.chat()] == ["requester", "agent", "requester"]
     assert any(e.tool == "finish" for e in runner.events.events)
     assert (runner.out_dir / "package.json").exists() and (runner.out_dir / "tender.txt").exists()
+
+
+def test_runner_adds_simulated_finance_and_legal_reviews(tmp_path):
+    runner = AgentRunner(ScriptedLLM(finishing_script()), out_root=tmp_path)
+    runner.start("Sales", "We need a CRM", 900_000)
+    assert wait_for(lambda: runner.pending_question() is not None)
+    runner.answer("About 120")
+    assert wait_for(lambda: runner.done)
+    stages = [e.stage for e in runner.events.events]
+    assert stages[-2:] == ["finance", "legal"]
+    assert [r["step"] for r in runner.package["reviews"]] == ["finance", "legal"]
+    assert all(r["simulated"] for r in runner.package["reviews"])

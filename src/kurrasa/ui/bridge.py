@@ -14,6 +14,17 @@ def form_message(department: str, need: str, budget_sar: int) -> str:
     return f"Department: {department}\nRequest: {need}\nBudget: SAR {budget_sar:,}"
 
 
+def simulated_reviews(events: EventLog) -> list[dict]:
+    """Placeholder Finance and Legal sign-offs: always approve, clearly marked as simulated (not built yet)."""
+    reviews = [
+        {"step": "finance", "status": "approved", "note": "Budget confirmed", "simulated": True},
+        {"step": "legal", "status": "approved", "note": "Contract terms approved", "simulated": True},
+    ]
+    for r in reviews:
+        events.emit(r["step"], "review", f"{r['note']} (simulated)", r)
+    return reviews
+
+
 class UIRequester:
     """The person using the UI: the agent's questions wait here until they answer."""
 
@@ -59,6 +70,8 @@ class AgentRunner:
         try:
             self.package = run_agent(self.llm, self.requester, self.events, load_facts(), load_template(),
                                      date.today(), f"SAHAB-{self.out_dir.name}")
+            if self.package["stopped_reason"] == "finished":
+                self.package["reviews"] = simulated_reviews(self.events)
             save_package(self.out_dir, self.package)
         except Exception as e:   # surface the failure in the UI instead of dying silently
             self.error = str(e)
