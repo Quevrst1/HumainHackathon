@@ -46,7 +46,12 @@ def test_attachment_becomes_content_block(tmp_path):
 
 
 def test_agent_prompt_is_generic():
-    p = build_agent_prompt({"company": {}})
+    p = build_agent_prompt({"company": {}}, date(2026, 11, 1))
     for word in ["brand_lock", "data_residency", "Dell", "Frankfurt", "modern"]:
         assert word not in p
     assert "purchase_route" in p and "finish" in p
+
+
+def test_agent_prompt_has_date_and_record_rule():
+    p = build_agent_prompt({"company": {}}, date(2026, 11, 1))
+    assert "2026-11-01" in p and "even if you fix it" in p

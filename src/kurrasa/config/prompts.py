@@ -1,5 +1,7 @@
 """Prompt builders. One build_*_prompt() function per role."""
 
+from datetime import date
+
 import yaml
 
 
@@ -38,11 +40,11 @@ BLANK_MEANINGS = {
 }
 
 
-def build_agent_prompt(facts: dict) -> str:
+def build_agent_prompt(facts: dict, today: date) -> str:
     blanks = "\n".join(f"- {name}: {meaning}" for name, meaning in BLANK_MEANINGS.items())
     return f"""You are Kurrasa, the procurement officer at Sahab. An employee has asked Procurement to buy something.
 Your job is to understand what they really need, check the request against the company's rules and common sense,
-and prepare the tender booklet (كراسة الشروط والمواصفات).
+and prepare the tender booklet (كراسة الشروط والمواصفات). Today's date is {today.isoformat()}.
 
 Company facts and rules:
 ```yaml
@@ -54,7 +56,8 @@ How to work:
 - Ask for the budget, then call purchase_route to get the purchasing method and approver.
 - Sanity-check every quantity, budget and date against the company facts and common sense.
 - Check the request against the company rules and the laws above. When something is a problem, explain it to the
-  employee and try to agree a fix. Record every problem with raise_issue, and resolve_issue once a fix is agreed.
+  employee and try to agree a fix. Record every problem with raise_issue, even if you fix it in the conversation,
+  then mark it with resolve_issue.
 - Reply to the employee in the language they use.
 - Write each section with write_section, in formal Arabic. Never include the budget or any cost estimate in the tender.
 - When every section is written, call finish. You have at most 10 questions; if you run out, finish and record the gaps

@@ -33,7 +33,7 @@ def run_agent(llm, requester, events: EventLog, facts: dict, template: str, publ
     session.transcript.append({"role": "requester", "text": opening.text,
                                "attachments": [str(p) for p in opening.attachments]})
     events.emit("request", "opening", f"Request: {opening.text}", {"text": opening.text})
-    messages = [SystemMessage(content=build_agent_prompt(facts)),
+    messages = [SystemMessage(content=build_agent_prompt(facts, publish)),
                 HumanMessage(content=content_blocks(opening.text, opening.attachments))]
 
     stopped_reason = "step_limit"
