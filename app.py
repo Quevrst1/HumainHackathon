@@ -7,8 +7,8 @@ import streamlit as st
 from kurrasa.config import AGENT_MODELS, create_llm
 from kurrasa.services.company import load_facts
 from kurrasa.ui.bridge import AgentRunner
+from kurrasa.ui.timeline import build_timeline, render_timeline
 
-STAGES = ["request", "interview", "checks", "draft", "package"]
 UPLOADS = Path("results") / "uploads"
 
 st.set_page_config(page_title="Kurrasa", layout="wide")
@@ -49,12 +49,12 @@ def chat_panel(runner: AgentRunner):
 @st.fragment(run_every=1.5)
 def status_panel(runner: AgentRunner):
     events = runner.events.events
-    current = "package" if runner.done else (events[-1].stage if events else "request")
-    st.markdown("  →  ".join(f"**{s.upper()}**" if s == current else s for s in STAGES))
     if runner.pending_question():
         st.info("Waiting for your answer in the Request tab.")
-    for e in events:
-        st.write(f"`{e.time[11:19]}` · **{e.stage}** · {e.summary}")
+    st.markdown(render_timeline(build_timeline(events), running=not runner.done), unsafe_allow_html=True)
+    with st.expander("Debug log"):
+        for e in events:
+            st.write(f"`{e.time[11:19]}` · **{e.stage}** · `{e.tool}` · {e.summary}")
 
 
 @st.fragment(run_every=2)
