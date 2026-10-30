@@ -14,14 +14,17 @@ def form_message(department: str, need: str, budget_sar: int) -> str:
     return f"Department: {department}\nRequest: {need}\nBudget: SAR {budget_sar:,}"
 
 
-def finance_review(events: EventLog, department: str) -> dict:
-    """Simulated budget check (not built yet). Edge case: Finance can't confirm its own budget
-    (segregation of duties), so its own requests go to the General Manager."""
+def finance_review(events: EventLog, department: str, budget_sar: int, previous_sar: int | None = None) -> dict:
+    """Simulated budget check (not built yet), re-run whenever the budget changes.
+    Edge case: Finance can't confirm its own budget (segregation of duties), so its own requests go to the General Manager."""
+    amount = f"SAR {budget_sar:,}" if previous_sar is None else f"changed from SAR {previous_sar:,} to SAR {budget_sar:,}"
     if department == "Finance":
-        review = {"step": "finance", "status": "escalated", "simulated": True,
-                  "note": "Finance raised this request, so it can't confirm its own budget: sent to the General Manager"}
+        review = {"step": "finance", "status": "escalated", "simulated": True, "budget_sar": budget_sar,
+                  "note": f"Budget {amount}: Finance raised this request, so it can't confirm its own budget; "
+                          "sent to the General Manager"}
     else:
-        review = {"step": "finance", "status": "approved", "note": "Budget confirmed", "simulated": True}
+        review = {"step": "finance", "status": "approved", "simulated": True, "budget_sar": budget_sar,
+                  "note": f"Budget {amount}: confirmed"}
     events.emit("finance", "review", f"{review['note']} (simulated)", review)
     return review
 
@@ -69,6 +72,7 @@ class AgentRunner:
 
     def start(self, department: str, need: str, budget_sar: int, attachments: list[Path] = ()):
         self.department = department
+        self.budget_sar = budget_sar
         self.out_dir = self.out_root / "ui" / datetime.now().strftime("%Y%m%d-%H%M%S")
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.events.add_listener(jsonl_listener(self.out_dir / "events.jsonl"))
@@ -79,11 +83,16 @@ class AgentRunner:
         try:
             reviews = []
 
-            def finance_after_request(event):
-                if event.stage == "request" and not reviews:   # budget check right after the request
-                    reviews.append(finance_review(self.events, self.department))
+            def finance_checks(event):
+                # Finance checks the budget right after the request, and again whenever the agent settles on a new one
+                if event.stage == "request":
+                    reviews.append(finance_review(self.events, self.department, self.budget_sar))
+                elif event.tool == "purchase_route" and "budget_sar" in event.data:
+                    confirmed = reviews[-1]["budget_sar"] if reviews else None
+                    if event.data["budget_sar"] != confirmed:
+                        reviews.append(finance_review(self.events, self.department, event.data["budget_sar"], confirmed))
 
-            self.events.add_listener(finance_after_request)
+            self.events.add_listener(finance_checks)
             self.package = run_agent(self.llm, self.requester, self.events, load_facts(), load_template(),
                                      date.today(), f"SAHAB-{self.out_dir.name}")
             if self.package["stopped_reason"] == "finished":

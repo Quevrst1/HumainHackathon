@@ -48,7 +48,8 @@ def build_tools(session, requester, events, facts) -> list[BaseTool]:
             events.emit("checks", "purchase_route", "Invalid budget given")
             return "Invalid budget: ask the requester for a positive amount in SAR."
         events.emit("checks", "purchase_route",
-                    f"{session.route['method']}, approved by {session.route['approver']}", session.route)
+                    f"{session.route['method']}, approved by {session.route['approver']}",
+                    {**session.route, "budget_sar": budget_sar})
         return json.dumps(session.route)
 
     @tool

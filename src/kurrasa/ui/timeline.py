@@ -33,7 +33,8 @@ def render_timeline(steps: list[dict], running: bool) -> str:
     for i, step in enumerate(steps):
         current = running and i == len(steps) - 1
         colour = "#e8710a" if step["went_back"] else ("#1a73e8" if current else "#34a853")
-        note = "↩ Went back to ask the department" if step["went_back"] else ""
+        note = ("↩ Back to Finance: the budget changed" if step["stage"] == "finance" else
+                "↩ Went back to ask the department") if step["went_back"] else ""
         details = "".join(f"<div style='opacity:.75;font-size:.85em'>{html.escape(d)}</div>" for d in step["details"][-4:])
         more = len(step["details"]) - 4
         if more > 0:

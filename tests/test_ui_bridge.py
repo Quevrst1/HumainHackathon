@@ -50,6 +50,28 @@ def test_runner_follows_the_pipeline_order(tmp_path):
 def test_finance_cannot_confirm_its_own_budget():
     from kurrasa.services.events import EventLog
     from kurrasa.ui.bridge import finance_review
-    finance = finance_review(EventLog(), "Finance")
+    finance = finance_review(EventLog(), "Finance", 400_000)
     assert finance["status"] == "escalated" and "General Manager" in finance["note"]
-    assert finance_review(EventLog(), "Sales")["status"] == "approved"
+    assert finance_review(EventLog(), "Sales", 400_000)["status"] == "approved"
+
+
+def test_budget_change_goes_back_to_finance(tmp_path):
+    # the form says 50,000 but the agent settles on 900,000 (finishing_script calls purchase_route(900000))
+    runner = AgentRunner(ScriptedLLM(finishing_script()), out_root=tmp_path)
+    runner.start("Sales", "We need a CRM", 50_000)
+    assert wait_for(lambda: runner.pending_question() is not None)
+    runner.answer("Actually our budget is 900,000")
+    assert wait_for(lambda: runner.done)
+    finance = [e for e in runner.events.events if e.stage == "finance"]
+    assert len(finance) == 2
+    assert "50,000" in finance[1].summary and "900,000" in finance[1].summary
+    assert [r["step"] for r in runner.package["reviews"]] == ["finance", "finance", "legal"]
+
+
+def test_same_budget_is_not_rechecked(tmp_path):
+    runner = AgentRunner(ScriptedLLM(finishing_script()), out_root=tmp_path)
+    runner.start("Sales", "We need a CRM", 900_000)
+    assert wait_for(lambda: runner.pending_question() is not None)
+    runner.answer("120")
+    assert wait_for(lambda: runner.done)
+    assert sum(e.stage == "finance" for e in runner.events.events) == 1
