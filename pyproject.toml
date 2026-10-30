@@ -11,6 +11,8 @@ dependencies = [
     "pyyaml",
     "requests",
     "streamlit",
+    "fpdf2",
+    "uharfbuzz",
     "langchain",
     "langchain-google-genai",
     "langchain-openai",

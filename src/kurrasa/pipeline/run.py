@@ -8,6 +8,7 @@ from kurrasa.agents.kurrasa import run_agent
 from kurrasa.agents.requester import HumanRequester, SimulatedRequester
 from kurrasa.services.company import load_facts, load_template
 from kurrasa.services.events import EventLog, jsonl_listener, print_listener
+from kurrasa.services.pdf import tender_pdf
 
 SCENARIOS = Path(__file__).resolve().parents[3] / "scenarios"
 
@@ -39,6 +40,7 @@ def save_package(out: Path, package: dict):
     package = dict(package)
     tender = package.pop("tender")
     if tender:
-        (out / "tender.txt").write_text(tender, encoding="utf-8")
+        (out / "tender.txt").write_text(tender, encoding="utf-8")   # what the judges read
+        (out / "tender.pdf").write_bytes(tender_pdf(tender))        # what people receive
     (out / "transcript.json").write_text(json.dumps(package.pop("transcript"), ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "package.json").write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding="utf-8")

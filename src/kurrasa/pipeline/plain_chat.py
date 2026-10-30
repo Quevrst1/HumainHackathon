@@ -9,6 +9,7 @@ from kurrasa.config import MAX_QUESTIONS
 from kurrasa.config.prompts import build_plain_chat_prompt
 from kurrasa.pipeline.run import load_scenario
 from kurrasa.services.company import fill_template, load_facts, load_template, purchase_route
+from kurrasa.services.pdf import tender_pdf
 
 
 def parse_json(text: str) -> dict | None:
@@ -61,6 +62,7 @@ def run_plain_chat(scenario: str, run_id: str, llm, requester_llm, out_root: Pat
         try:
             tender = fill_template(load_template(), package["sections"], today, f"SAHAB-{run_id}", facts)
             (out / "tender.txt").write_text(tender, encoding="utf-8")
+            (out / "tender.pdf").write_bytes(tender_pdf(tender))
             package["stopped_reason"] = "finished"
         except ValueError:
             pass   # missing sections: stays "bad_output"

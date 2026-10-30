@@ -6,6 +6,7 @@ import streamlit as st
 
 from kurrasa.config import AGENT_MODELS, create_llm
 from kurrasa.services.company import load_facts
+from kurrasa.services.pdf import tender_pdf
 from kurrasa.ui.bridge import AgentRunner
 from kurrasa.ui.timeline import build_timeline, render_timeline
 
@@ -81,7 +82,8 @@ def review_panel(runner: AgentRunner):
 
     if package.get("tender"):
         st.subheader("Tender (كراسة الشروط والمواصفات)")
-        st.download_button("Download tender", package["tender"], file_name="tender.txt")
+        st.download_button("Download tender (PDF)", tender_pdf(package["tender"]), file_name="tender.pdf",
+                           mime="application/pdf")
         st.markdown(f'<div dir="rtl" style="white-space: pre-wrap; text-align: right">{html.escape(package["tender"])}</div>',
                     unsafe_allow_html=True)
 
