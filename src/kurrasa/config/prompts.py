@@ -79,3 +79,26 @@ Sections:
 
 Reply with JSON only, in this shape:
 {{"sections": {{"TITLE": "...", ...one entry per section...}}, "issues": ["..."], "budget_sar": null}}"""
+
+
+def build_requirement_judge_prompt(tender: str, requirement: str) -> str:
+    return f"""Below is a tender booklet (it may be in Arabic). Does it state this requirement, in any wording or language?
+
+Requirement: {requirement}
+
+Tender:
+{tender}
+
+Answer YES or NO only."""
+
+
+def build_flag_judge_prompt(issues: list[str], flags: dict) -> str:
+    issue_list = "\n".join(f"- {i}" for i in issues)
+    categories = "\n".join(f"- {name}: {meaning}" for name, meaning in flags.items())
+    return f"""A procurement assistant raised these issues about a purchase request:
+{issue_list}
+
+Which of these problem categories do the issues describe? Only count a category if an issue clearly describes it.
+{categories}
+
+Reply with a JSON list of category names only, e.g. ["brand_lock"], or [] if none apply."""
