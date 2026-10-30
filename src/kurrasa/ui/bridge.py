@@ -14,21 +14,23 @@ def form_message(department: str, need: str, budget_sar: int) -> str:
     return f"Department: {department}\nRequest: {need}\nBudget: SAR {budget_sar:,}"
 
 
-def simulated_reviews(events: EventLog, department: str) -> list[dict]:
-    """Placeholder Finance and Legal sign-offs, clearly marked as simulated (not built yet).
-    Edge case: Finance can't confirm its own budget (segregation of duties), so it escalates to the General Manager."""
+def finance_review(events: EventLog, department: str) -> dict:
+    """Simulated budget check (not built yet). Edge case: Finance can't confirm its own budget
+    (segregation of duties), so its own requests go to the General Manager."""
     if department == "Finance":
-        finance = {"step": "finance", "status": "escalated", "simulated": True,
-                   "note": "Finance raised this request, so it can't confirm its own budget: sent to the General Manager"}
+        review = {"step": "finance", "status": "escalated", "simulated": True,
+                  "note": "Finance raised this request, so it can't confirm its own budget: sent to the General Manager"}
     else:
-        finance = {"step": "finance", "status": "approved", "note": "Budget confirmed", "simulated": True}
-    reviews = [
-        finance,
-        {"step": "legal", "status": "approved", "note": "Contract terms approved", "simulated": True},
-    ]
-    for r in reviews:
-        events.emit(r["step"], "review", f"{r['note']} (simulated)", r)
-    return reviews
+        review = {"step": "finance", "status": "approved", "note": "Budget confirmed", "simulated": True}
+    events.emit("finance", "review", f"{review['note']} (simulated)", review)
+    return review
+
+
+def legal_review(events: EventLog) -> dict:
+    """Simulated contract-terms review (not built yet): always approves."""
+    review = {"step": "legal", "status": "approved", "note": "Contract terms approved", "simulated": True}
+    events.emit("legal", "review", f"{review['note']} (simulated)", review)
+    return review
 
 
 class UIRequester:
@@ -75,11 +77,21 @@ class AgentRunner:
 
     def _run(self):
         try:
+            reviews = []
+
+            def finance_after_request(event):
+                if event.stage == "request" and not reviews:   # budget check right after the request
+                    reviews.append(finance_review(self.events, self.department))
+
+            self.events.add_listener(finance_after_request)
             self.package = run_agent(self.llm, self.requester, self.events, load_facts(), load_template(),
                                      date.today(), f"SAHAB-{self.out_dir.name}")
             if self.package["stopped_reason"] == "finished":
-                self.package["reviews"] = simulated_reviews(self.events, self.department)
+                reviews.append(legal_review(self.events))
+            self.package["reviews"] = reviews
             save_package(self.out_dir, self.package)
+            if self.package["tender"]:
+                self.events.emit("generation", "generate", "Tender and PDF generated", {"folder": str(self.out_dir)})
         except Exception as e:   # surface the failure in the UI instead of dying silently
             self.error = str(e)
         self.done = True

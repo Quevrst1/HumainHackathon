@@ -2,7 +2,7 @@ import html
 
 from kurrasa.services.events import Event
 
-ORDER = ["request", "interview", "checks", "draft", "package", "finance", "legal"]
+ORDER = ["request", "finance", "interview", "checks", "draft", "package", "legal", "generation"]
 LABELS = {
     "request": "Request received",
     "interview": "Asking the department",
@@ -11,6 +11,7 @@ LABELS = {
     "package": "Package ready",
     "finance": "Finance review",
     "legal": "Legal review",
+    "generation": "Tender and PDF generated",
 }
 
 

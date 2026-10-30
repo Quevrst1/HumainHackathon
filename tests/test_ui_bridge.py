@@ -34,21 +34,22 @@ def test_runner_asks_then_finishes(tmp_path):
     assert (runner.out_dir / "package.json").exists() and (runner.out_dir / "tender.txt").exists()
 
 
-def test_runner_adds_simulated_finance_and_legal_reviews(tmp_path):
+def test_runner_follows_the_pipeline_order(tmp_path):
     runner = AgentRunner(ScriptedLLM(finishing_script()), out_root=tmp_path)
     runner.start("Sales", "We need a CRM", 900_000)
     assert wait_for(lambda: runner.pending_question() is not None)
     runner.answer("About 120")
     assert wait_for(lambda: runner.done)
     stages = [e.stage for e in runner.events.events]
-    assert stages[-2:] == ["finance", "legal"]
+    assert stages[:2] == ["request", "finance"]          # Finance checks the budget before procurement starts
+    assert stages[-2:] == ["legal", "generation"]        # Legal reviews the draft, then the tender + PDF are generated
     assert [r["step"] for r in runner.package["reviews"]] == ["finance", "legal"]
     assert all(r["simulated"] for r in runner.package["reviews"])
 
 
 def test_finance_cannot_confirm_its_own_budget():
     from kurrasa.services.events import EventLog
-    from kurrasa.ui.bridge import simulated_reviews
-    finance = simulated_reviews(EventLog(), "Finance")[0]
+    from kurrasa.ui.bridge import finance_review
+    finance = finance_review(EventLog(), "Finance")
     assert finance["status"] == "escalated" and "General Manager" in finance["note"]
-    assert simulated_reviews(EventLog(), "Sales")[0]["status"] == "approved"
+    assert finance_review(EventLog(), "Sales")["status"] == "approved"

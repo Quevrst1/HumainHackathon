@@ -8,6 +8,7 @@ from kurrasa.config import AGENT_MODELS, create_llm
 from kurrasa.services.company import load_facts
 from kurrasa.services.pdf import tender_pdf
 from kurrasa.ui.bridge import AgentRunner
+from kurrasa.ui.pipeline_view import pipeline_state, render_pipeline
 from kurrasa.ui.timeline import build_timeline, render_timeline
 
 UPLOADS = Path("results") / "uploads"
@@ -48,7 +49,19 @@ def chat_panel(runner: AgentRunner):
 
 
 @st.fragment(run_every=1.5)
-def status_panel(runner: AgentRunner):
+def pipeline_panel(runner: AgentRunner):
+    finished = runner.done and bool(runner.package and runner.package.get("tender"))
+    nodes = pipeline_state(runner.events.events, runner.department, waiting=runner.pending_question() is not None,
+                           finished=finished)
+    st.markdown(render_pipeline(nodes), unsafe_allow_html=True)
+    if runner.pending_question():
+        st.info(f"Procurement is waiting for {runner.department} to answer: \"{runner.pending_question()}\"")
+    elif runner.error:
+        st.error(f"Kurrasa stopped: {runner.error}")
+
+
+@st.fragment(run_every=1.5)
+def logs_panel(runner: AgentRunner):
     events = runner.events.events
     if runner.pending_question():
         st.info("Waiting for your answer in the Request tab.")
@@ -93,7 +106,7 @@ def review_panel(runner: AgentRunner):
 
 
 runner: AgentRunner | None = st.session_state.get("runner")
-request_tab, status_tab, review_tab = st.tabs(["Request", "Status", "Review"])
+request_tab, pipeline_tab, logs_tab, review_tab = st.tabs(["Request", "Pipeline", "Logs", "Review"])
 
 with request_tab:
     if runner is None:
@@ -116,11 +129,17 @@ with request_tab:
             del st.session_state["runner"]
             st.rerun()
 
-with status_tab:
+with pipeline_tab:
     if runner:
-        status_panel(runner)
+        pipeline_panel(runner)
     else:
-        st.caption("Submit a request to see Kurrasa's progress.")
+        st.caption("Submit a request to see where it is in the pipeline.")
+
+with logs_tab:
+    if runner:
+        logs_panel(runner)
+    else:
+        st.caption("Submit a request to see Kurrasa's step-by-step log.")
 
 with review_tab:
     if runner:
