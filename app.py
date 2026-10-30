@@ -106,7 +106,7 @@ def review_panel(runner: AgentRunner):
 
 
 runner: AgentRunner | None = st.session_state.get("runner")
-request_tab, pipeline_tab, logs_tab, review_tab = st.tabs(["Request", "Pipeline", "Logs", "Review"])
+request_tab, status_tab, logs_tab, review_tab = st.tabs(["Request", "Status", "Logs", "Review"])
 
 with request_tab:
     if runner is None:
@@ -129,7 +129,7 @@ with request_tab:
             del st.session_state["runner"]
             st.rerun()
 
-with pipeline_tab:
+with status_tab:
     if runner:
         pipeline_panel(runner)
     else:
