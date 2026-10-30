@@ -1,4 +1,4 @@
-from tender_agent.config import create_llm
+from kurrasa.config import create_llm
 
 # Which scenario folder under scenarios/ to run, and which phase.
 SCENARIO = "crm_vague"
@@ -16,4 +16,4 @@ AGENT_MODELS = {
 if __name__ == "__main__":
     # Smoke test until the phase 1 pipeline exists: proves keys, installs, and imports work.
     llm = create_llm(**AGENT_MODELS["interviewer"])
-    print(llm.invoke("Reply with exactly: tender agent online").content)
+    print(llm.invoke("Reply with exactly: kurrasa online").content)

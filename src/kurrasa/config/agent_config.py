@@ -4,7 +4,7 @@ These values are fallbacks: `main.py` passes explicit `agent_models`
 to the pipeline, which override the defaults here.
 
 Supported providers: "gemini", "ollama", "openrouter", "deepseek",
-"nvidia" (see tender_agent.config.create_llm).
+"nvidia" (see kurrasa.config.create_llm).
 """
 
 # Max interview turns before the agent must draft the tender (phase 1).

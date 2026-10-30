@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.outputs import ChatResult
 
-from tender_agent.config.env import Env
+from kurrasa.config.env import Env
 
 LLM_HARD_TIMEOUT = 120   # seconds per attempt
 LLM_MAX_RETRIES  = 3     # max retries per call
