@@ -62,3 +62,20 @@ How to work:
 
 Sections to write:
 {blanks}"""
+
+
+def build_baseline_prompt(opening_request: str, facts: dict) -> str:
+    blanks = "\n".join(f"- {name}: {meaning}" for name, meaning in BLANK_MEANINGS.items())
+    return f"""You are the procurement officer at Sahab. An employee sent this request: "{opening_request}"
+You cannot ask them anything. Using only the request and the company facts below, write the tender booklet sections
+in formal Arabic, list any problems you see with the request, and give the budget if the request states one.
+
+Company facts and rules:
+```yaml
+{yaml.safe_dump(facts, allow_unicode=True, sort_keys=False)}```
+
+Sections:
+{blanks}
+
+Reply with JSON only, in this shape:
+{{"sections": {{"TITLE": "...", ...one entry per section...}}, "issues": ["..."], "budget_sar": null}}"""
