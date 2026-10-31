@@ -67,5 +67,7 @@ def run_agent(llm, requester, events: EventLog, facts: dict, template: str, publ
         "questions_asked": session.questions_asked,
         "transcript": session.transcript,
         "tender": tender,
+        "tender_no": tender_no,
+        "publish": publish.isoformat(),
         "stopped_reason": stopped_reason,
     }

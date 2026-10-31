@@ -41,6 +41,6 @@ def save_package(out: Path, package: dict):
     tender = package.pop("tender")
     if tender:
         (out / "tender.txt").write_text(tender, encoding="utf-8")   # what the judges read
-        (out / "tender.pdf").write_bytes(tender_pdf(tender))        # what people receive
+        (out / "tender.pdf").write_bytes(tender_pdf({**package, "tender": tender}))   # what people receive
     (out / "transcript.json").write_text(json.dumps(package.pop("transcript"), ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "package.json").write_text(json.dumps(package, ensure_ascii=False, indent=2), encoding="utf-8")

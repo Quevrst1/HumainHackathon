@@ -21,6 +21,7 @@ def test_full_scripted_run_produces_tender():
     assert "{{" not in package["tender"]
     assert package["route"] == {"method": "limited competition", "approver": "General Manager"}
     assert package["questions_asked"] == 1
+    assert package["tender_no"] == "SAHAB-T" and package["publish"] == "2026-11-01"
 
 
 def test_plain_text_reply_gets_nudged():

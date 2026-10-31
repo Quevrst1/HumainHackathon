@@ -51,8 +51,8 @@ def run_plain_chat(scenario: str, run_id: str, llm, requester_llm, out_root: Pat
             reply = None
             break
 
-    package = {"requirements": {}, "issues": [], "sections": {}, "route": None,
-               "questions_asked": questions, "stopped_reason": "bad_output"}
+    package = {"requirements": {}, "issues": [], "sections": {}, "route": None, "tender_no": f"SAHAB-{run_id}",
+               "publish": today.isoformat(), "questions_asked": questions, "stopped_reason": "bad_output"}
     if reply:
         package["sections"] = reply["sections"]
         package["issues"] = [{"id": i, "description": d, "status": "open", "resolution": None}
@@ -62,7 +62,7 @@ def run_plain_chat(scenario: str, run_id: str, llm, requester_llm, out_root: Pat
         try:
             tender = fill_template(load_template(), package["sections"], today, f"SAHAB-{run_id}", facts)
             (out / "tender.txt").write_text(tender, encoding="utf-8")
-            (out / "tender.pdf").write_bytes(tender_pdf(tender))
+            (out / "tender.pdf").write_bytes(tender_pdf({**package, "tender": tender}))
             package["stopped_reason"] = "finished"
         except ValueError:
             pass   # missing sections: stays "bad_output"

@@ -99,7 +99,7 @@ def review_panel(runner: AgentRunner):
 
     if package.get("tender"):
         st.subheader("Tender (كراسة الشروط والمواصفات)")
-        st.download_button("Download tender (PDF)", tender_pdf(package["tender"]), file_name="tender.pdf",
+        st.download_button("Download tender (PDF)", tender_pdf(package), file_name="tender.pdf",
                            mime="application/pdf")
         st.markdown(f'<div dir="rtl" style="white-space: pre-wrap; text-align: right">{html.escape(package["tender"])}</div>',
                     unsafe_allow_html=True)
