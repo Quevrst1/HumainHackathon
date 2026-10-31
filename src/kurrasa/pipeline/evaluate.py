@@ -136,13 +136,13 @@ def group_of(name: str) -> str:
 
 
 def log(text: str):
-    print(f"{datetime.now():%H:%M:%S}  {text}", flush=True)
+    print(f"{datetime.now():%H:%M:%S}  {' '.join(text.split()) if text.startswith('    ') else text}", flush=True)
 
 
 def log_step(event):
     """The agent steps worth seeing in the experiment log."""
     if event.tool == "ask_requester" and "question" in event.data:
-        log(f"    asked: {event.data['question'][:100]}")
+        log(f"    asked: {' '.join(event.data['question'].split())[:110]}")
     elif event.tool == "purchase_route":
         log(f"    route: {event.summary}")
     elif event.tool == "raise_issue":
