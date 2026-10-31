@@ -34,16 +34,20 @@ def _with_timeout_and_retry(fn, *args, **kwargs):
             return future.result(timeout=LLM_HARD_TIMEOUT)
         except FuturesTimeoutError:
             last_error = TimeoutError(f"LLM call timed out after {LLM_HARD_TIMEOUT}s (attempt {attempt}/{LLM_MAX_RETRIES})")
-            print(f"  LLM timeout on attempt {attempt}/{LLM_MAX_RETRIES} — {'retrying...' if attempt < LLM_MAX_RETRIES else 'giving up'}")
+            print(f"    model timed out after {LLM_HARD_TIMEOUT}s, {'retrying' if attempt < LLM_MAX_RETRIES else 'giving up'}", flush=True)
             if attempt < LLM_MAX_RETRIES:
                 time.sleep(LLM_RETRY_DELAY)
         except Exception as e:
             last_error = e
-            print(f"  LLM error on attempt {attempt}/{LLM_MAX_RETRIES}: {e} — {'retrying...' if attempt < LLM_MAX_RETRIES else 'giving up'}")
+            # Honour the API-suggested delay on rate limits; keep the log line short
+            m = re.search(r'retry in (\d+(?:\.\d+)?)s', str(e))
+            delay = float(m.group(1)) + 5 if m else LLM_RETRY_DELAY
+            reason = "rate limit" if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e) else str(e).splitlines()[0][:80]
             if attempt < LLM_MAX_RETRIES:
-                # Honour API-suggested delay on rate limits
-                m = re.search(r'retry in (\d+(?:\.\d+)?)s', str(e))
-                time.sleep(float(m.group(1)) + 5 if m else LLM_RETRY_DELAY)
+                print(f"    {reason}, waiting {delay:.0f}s", flush=True)
+                time.sleep(delay)
+            else:
+                print(f"    {reason}, giving up", flush=True)
         finally:
             executor.shutdown(wait=False)
     raise last_error
