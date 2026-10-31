@@ -18,7 +18,7 @@ def load_scenario(name: str) -> dict:
 
 
 def run_scenario(scenario: str | None, run_id: str, agent_llm, requester_llm,
-                 out_root: Path = Path("results"), verbose: bool = True) -> Path:
+                 out_root: Path = Path("results"), verbose: bool = True, listener=None) -> Path:
     """Run the agent once (simulated requester, or a human when scenario is None) and save everything."""
     out = out_root / (scenario or "human") / "agent" / run_id
     out.mkdir(parents=True, exist_ok=True)
@@ -27,6 +27,8 @@ def run_scenario(scenario: str | None, run_id: str, agent_llm, requester_llm,
     events.add_listener(jsonl_listener(out / "events.jsonl"))
     if verbose:
         events.add_listener(print_listener)
+    if listener:
+        events.add_listener(listener)
 
     requester = SimulatedRequester(load_scenario(scenario), requester_llm) if scenario else HumanRequester()
     package = run_agent(agent_llm, requester, events, load_facts(), load_template(), date.today(), f"SAHAB-{run_id}")

@@ -18,3 +18,10 @@ def test_run_scenario_writes_outputs(tmp_path):
         assert (out / name).exists(), name
     package = json.loads((out / "package.json").read_text(encoding="utf-8"))
     assert package["stopped_reason"] == "finished" and "tender" not in package
+
+
+def test_run_scenario_sends_steps_to_a_custom_listener(tmp_path):
+    seen = []
+    run_scenario("crm_clean", "t2", ScriptedLLM(finishing_script()), EchoLLM(), out_root=tmp_path, verbose=False,
+                 listener=seen.append)
+    assert [e.tool for e in seen][:2] == ["opening", "ask_requester"] and seen[-1].tool == "finish"

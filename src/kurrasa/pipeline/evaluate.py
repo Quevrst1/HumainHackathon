@@ -2,6 +2,7 @@ import argparse
 import csv
 import json
 import re
+from datetime import datetime
 from math import comb
 from pathlib import Path
 
@@ -134,13 +135,41 @@ def group_of(name: str) -> str:
     return "holdout" if yaml.safe_load((SCENARIOS / name / "scenario.yaml").read_text(encoding="utf-8"))["holdout"] else "main"
 
 
-def scored_row(name: str, condition: str, i: int, run_and_score) -> dict:
+def log(text: str):
+    print(f"{datetime.now():%H:%M:%S}  {text}", flush=True)
+
+
+def log_step(event):
+    """The agent steps worth seeing in the experiment log."""
+    if event.tool == "ask_requester" and "question" in event.data:
+        log(f"    asked: {event.data['question'][:100]}")
+    elif event.tool == "purchase_route":
+        log(f"    route: {event.summary}")
+    elif event.tool == "raise_issue":
+        log(f"    issue: {event.data.get('description', '')[:100]}")
+    elif event.tool == "resolve_issue" and event.data.get("resolution"):
+        log(f"    resolved: {event.data['resolution'][:100]}")
+
+
+def result_line(s: dict) -> str:
+    check = "problem caught" if s["problem_caught"] is not None else "false alarm"
+    value = s["problem_caught"] if s["problem_caught"] is not None else s["false_alarm"]
+    agreement = f"{s['judge_agreement']:.0%}" if s["judge_agreement"] is not None else "n/a"
+    return (f"{'success' if s['success'] else 'fail'} | requirements {s['requirements_found']}/{s['requirements_total']}"
+            f" | {check}: {'yes' if value else 'no'} | route {'ok' if s['method_ok'] and s['approver_ok'] else 'wrong'}"
+            f" | budget leaked: {'yes' if s['budget_leaked'] else 'no'} | {s['questions_asked']} questions"
+            f" | judges agree {agreement}")
+
+
+def scored_row(name: str, condition: str, i: int, run_and_score, label: str = "") -> dict:
     row = {"scenario": name, "group": group_of(name), "condition": condition, "run": i}
+    log(f"{label}{name} / {'kurrasa' if condition == 'agent' else condition} / run {i}")
     try:
         row.update(run_and_score())
+        log(f"    -> {result_line(row)}")
     except Exception as e:   # one failed run or judge call (e.g. quota) shouldn't lose the rest
         row["error"] = str(e)[:200]
-    print(f"{name:24} {condition:10} run {i}: {'ERROR ' + row['error'] if 'error' in row else 'scored'}")
+        log(f"    -> error: {row['error']}")
     return row
 
 
@@ -181,12 +210,17 @@ def main():
     else:
         agent_llm = create_llm(**AGENT_MODELS["agent"])
         requester_llm = create_llm(**AGENT_MODELS["requester"])
-        rows = []
+        rows, total = [], len(names) * args.runs * 2
+        log(f"experiment: {len(names)} scenarios x {args.runs} runs x 2 conditions = {total} runs")
+        log(f"agent and requester: {AGENT_MODELS['agent']['model']} | judges: {', '.join(j['model'] for j in JUDGE_MODELS)}")
         for name in names:
             for i in range(1, args.runs + 1):
                 rows.append(scored_row(name, "agent", i, lambda: score_run(
-                    run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False), SCENARIOS / name, judges)))
+                    run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False, listener=log_step),
+                    SCENARIOS / name, judges), label=f"[{len(rows) + 1}/{total}] "))
                 rows.append(scored_row(name, "plain_chat", i, lambda: score_run(
-                    run_plain_chat(name, f"eval{i}", agent_llm, requester_llm), SCENARIOS / name, judges)))
+                    run_plain_chat(name, f"eval{i}", agent_llm, requester_llm), SCENARIOS / name, judges),
+                    label=f"[{len(rows) + 1}/{total}] "))
+        log("all runs finished")
 
     write_summary(rows, k=args.runs)
