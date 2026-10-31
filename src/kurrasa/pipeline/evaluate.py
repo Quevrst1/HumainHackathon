@@ -128,37 +128,63 @@ def summarise(rows: list[dict], k: int = 3) -> list[dict]:
     return out
 
 
+def group_of(name: str) -> str:
+    return "holdout" if yaml.safe_load((SCENARIOS / name / "scenario.yaml").read_text(encoding="utf-8"))["holdout"] else "main"
+
+
+def scored_row(name: str, condition: str, i: int, run_and_score) -> dict:
+    row = {"scenario": name, "group": group_of(name), "condition": condition, "run": i}
+    try:
+        row.update(run_and_score())
+    except Exception as e:   # one failed run or judge call (e.g. quota) shouldn't lose the rest
+        row["error"] = str(e)[:200]
+    print(f"{name:24} {condition:10} run {i}: {'ERROR ' + row['error'] if 'error' in row else 'scored'}")
+    return row
+
+
+def rescore(results_root: Path, names: list[str], runs: int, judges: list) -> list[dict]:
+    """Score runs already saved under results_root again, without re-running the agent (e.g. after a judge quota ran out)."""
+    rows = []
+    for name in names:
+        for i in range(1, runs + 1):
+            for condition in ("agent", "plain_chat"):
+                run_dir = results_root / name / condition / f"eval{i}"
+                if (run_dir / "package.json").exists():
+                    rows.append(scored_row(name, condition, i, lambda: score_run(run_dir, SCENARIOS / name, judges)))
+    return rows
+
+
+def write_summary(rows: list[dict], k: int, out: Path = Path("results")):
+    out.mkdir(exist_ok=True)
+    with open(out / "summary.csv", "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["scenario", "group", "condition", "run", *METRICS, "flags_detected", "error"])
+        writer.writeheader()
+        writer.writerows({key: v for key, v in r.items() if key in writer.fieldnames} for r in rows)
+    for line in summarise(rows, k=k):
+        print(" | ".join(f"{key}={v:.2f}" if isinstance(v, float) else f"{key}={v}" for key, v in line.items()))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run every scenario with plain chat (A) and Kurrasa (C), then score them.")
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--scenarios", nargs="*", help="default: all scenarios")
+    parser.add_argument("--rescore", action="store_true", help="only re-score runs already saved in results/")
     args = parser.parse_args()
 
     names = args.scenarios or sorted(p.name for p in SCENARIOS.iterdir() if p.is_dir())
-    agent_llm = create_llm(**AGENT_MODELS["agent"])
-    requester_llm = create_llm(**AGENT_MODELS["requester"])
     judges = [create_llm(**cfg) for cfg in JUDGE_MODELS]
 
-    rows = []
-    for name in names:
-        group = "holdout" if yaml.safe_load((SCENARIOS / name / "scenario.yaml").read_text(encoding="utf-8"))["holdout"] else "main"
-        for i in range(1, args.runs + 1):
-            for condition in ("agent", "plain_chat"):
-                row = {"scenario": name, "group": group, "condition": condition, "run": i}
-                try:
-                    run_dir = (run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False)
-                               if condition == "agent" else run_plain_chat(name, f"eval{i}", agent_llm, requester_llm))
-                    row.update(score_run(run_dir, SCENARIOS / name, judges))
-                except Exception as e:   # one failed run (e.g. quota) shouldn't lose the rest
-                    row["error"] = str(e)[:200]
-                rows.append(row)
-                print(f"{name:24} {condition:8} run {i}: {'ERROR ' + row['error'] if 'error' in row else 'scored'}")
+    if args.rescore:
+        rows = rescore(Path("results"), names, args.runs, judges)
+    else:
+        agent_llm = create_llm(**AGENT_MODELS["agent"])
+        requester_llm = create_llm(**AGENT_MODELS["requester"])
+        rows = []
+        for name in names:
+            for i in range(1, args.runs + 1):
+                rows.append(scored_row(name, "agent", i, lambda: score_run(
+                    run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False), SCENARIOS / name, judges)))
+                rows.append(scored_row(name, "plain_chat", i, lambda: score_run(
+                    run_plain_chat(name, f"eval{i}", agent_llm, requester_llm), SCENARIOS / name, judges)))
 
-    Path("results").mkdir(exist_ok=True)
-    with open("results/summary.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["scenario", "group", "condition", "run", *METRICS, "flags_detected", "error"])
-        writer.writeheader()
-        writer.writerows({k: v for k, v in r.items() if k in writer.fieldnames} for r in rows)
-
-    for line in summarise(rows, k=args.runs):
-        print(" | ".join(f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}" for k, v in line.items()))
+    write_summary(rows, k=args.runs)

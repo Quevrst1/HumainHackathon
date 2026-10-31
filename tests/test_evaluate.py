@@ -95,3 +95,13 @@ def test_batched_requirement_judge(tmp_path):
     judge = ScriptedJudge(["brand_lock"])
     score_run(make_run(tmp_path, GM_GENERAL, ["Dell named"]), Path("scenarios/laptops_brand_locked"), [judge])
     assert judge.calls == 2   # one call for all requirements, one for the issues
+
+
+def test_rescore_scores_saved_runs_without_rerunning(tmp_path):
+    from kurrasa.pipeline.evaluate import rescore
+    make_run(tmp_path / "laptops_brand_locked" / "agent" / "eval1", GM_GENERAL, ["Dell named"])
+    make_run(tmp_path / "laptops_brand_locked" / "plain_chat" / "eval1", GM_GENERAL, [])
+    rows = rescore(tmp_path, ["laptops_brand_locked", "laptops_clean"], runs=2, judges=[ScriptedJudge(["brand_lock"])])
+    assert [(r["condition"], r["run"]) for r in rows] == [("agent", 1), ("plain_chat", 1)]   # missing runs skipped
+    assert rows[0]["problem_caught"] and rows[0]["group"] == "main"
+    assert (tmp_path / "laptops_brand_locked" / "agent" / "eval1" / "scores.json").exists()
