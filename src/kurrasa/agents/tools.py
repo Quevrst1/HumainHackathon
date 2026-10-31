@@ -5,9 +5,16 @@ from langchain_core.tools import BaseTool, tool
 from kurrasa.config import MAX_QUESTIONS
 from kurrasa.services.company import AGENT_BLANKS, purchase_route as route_for
 
+# Each stage only offers its own tools; next_stage moves the agent on.
+STAGE_TOOLS = {
+    "interview": ["ask_requester", "record_requirement", "next_stage"],
+    "checks": ["ask_requester", "record_requirement", "purchase_route", "raise_issue", "resolve_issue", "next_stage"],
+    "draft": ["write_section", "finish"],
+}
+
 
 def build_tools(session, requester, events, facts) -> list[BaseTool]:
-    """The agent's tools. They only act or store; Gemini does the thinking. Tools never raise."""
+    """The agent's tools. They store and look things up; the model decides. They return errors as text."""
 
     @tool
     def ask_requester(question: str) -> str:
@@ -17,7 +24,7 @@ def build_tools(session, requester, events, facts) -> list[BaseTool]:
             return "The requester has ended the interview."
         if session.questions_asked >= MAX_QUESTIONS:
             events.emit("interview", "ask_requester", "Question limit reached")
-            return f"Question limit ({MAX_QUESTIONS}) reached. Finish now and record remaining gaps with raise_issue."
+            return f"Question limit ({MAX_QUESTIONS}) reached. Move on with next_stage and record remaining gaps as issues."
 
         session.questions_asked += 1
         reply = requester.reply(question)
@@ -72,6 +79,27 @@ def build_tools(session, requester, events, facts) -> list[BaseTool]:
         return f"Issue {issue_id} resolved"
 
     @tool
+    def next_stage() -> str:
+        """Move from the interview to the checks, or from the checks to drafting the tender."""
+        if session.stage == "interview":
+            session.stage = "checks"
+            events.emit("checks", "next_stage", "Interview done, checking the request")
+            noted = "\n".join(f"- {k}: {v}" for k, v in session.requirements.items()) or "- nothing recorded yet"
+            return ("Checks stage. Requirements recorded so far:\n" + noted + "\n\n"
+                    "Go through the request against every company rule, the data-protection rules and common sense "
+                    "(quantities, budget, dates, acceptance criteria). Record every problem with raise_issue, even if "
+                    "it was already fixed in the conversation, then mark fixed ones with resolve_issue. Call "
+                    "purchase_route with the budget. You may still ask the requester. Then call next_stage.")
+        if session.stage == "checks":
+            if session.route is None:
+                events.emit("checks", "next_stage", "Tried to draft before purchase_route")
+                return "Call purchase_route with the budget before moving on."
+            session.stage = "draft"
+            events.emit("draft", "next_stage", "Checks done, writing the tender")
+            return "Draft stage. Write every section with write_section, then call finish."
+        return "Already drafting. Write the remaining sections, then call finish."
+
+    @tool
     def write_section(name: str, text: str) -> str:
         """Fill one blank of the Arabic tender template."""
         if name not in AGENT_BLANKS:
@@ -92,4 +120,5 @@ def build_tools(session, requester, events, facts) -> list[BaseTool]:
         events.emit("package", "finish", "Tender package ready")
         return "done"
 
-    return [ask_requester, record_requirement, purchase_route, raise_issue, resolve_issue, write_section, finish]
+    return [ask_requester, record_requirement, purchase_route, raise_issue, resolve_issue, next_stage,
+            write_section, finish]

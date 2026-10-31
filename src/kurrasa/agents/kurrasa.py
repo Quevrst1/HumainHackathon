@@ -6,7 +6,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 from kurrasa.agents.session import Message, Session
-from kurrasa.agents.tools import build_tools
+from kurrasa.agents.tools import STAGE_TOOLS, build_tools
 from kurrasa.config import MAX_STEPS
 from kurrasa.config.prompts import build_agent_prompt
 from kurrasa.services.company import fill_template
@@ -27,7 +27,6 @@ def run_agent(llm, requester, events: EventLog, facts: dict, template: str, publ
     session = Session()
     tools = build_tools(session, requester, events, facts)
     by_name = {t.name: t for t in tools}
-    llm_with_tools = llm.bind_tools(tools)
 
     opening: Message = requester.opening()
     session.transcript.append({"role": "requester", "text": opening.text,
@@ -38,15 +37,20 @@ def run_agent(llm, requester, events: EventLog, facts: dict, template: str, publ
 
     stopped_reason = "step_limit"
     for _ in range(MAX_STEPS):
-        ai = llm_with_tools.invoke(messages)
+        allowed = STAGE_TOOLS[session.stage]
+        ai = llm.bind_tools([by_name[n] for n in allowed]).invoke(messages)
         messages.append(ai)
         if not ai.tool_calls:
             messages.append(HumanMessage(content="Use one of your tools to continue."))
             continue
 
         for call in ai.tool_calls:
-            tool = by_name.get(call["name"])
-            result = tool.invoke(call["args"]) if tool else f"Unknown tool {call['name']}."
+            allowed = STAGE_TOOLS[session.stage]   # can change mid-batch after next_stage
+            if call["name"] in allowed:
+                result = by_name[call["name"]].invoke(call["args"])
+            else:
+                result = (f"{call['name']} is not available in the {session.stage} stage. "
+                          f"Available: {', '.join(allowed)}.")
             messages.append(ToolMessage(content=str(result), tool_call_id=call["id"]))
 
         if session.pending_attachments:

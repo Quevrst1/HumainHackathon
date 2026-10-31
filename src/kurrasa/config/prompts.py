@@ -50,6 +50,11 @@ Company facts and rules:
 ```yaml
 {yaml.safe_dump(facts, allow_unicode=True, sort_keys=False)}```
 
+You work in three stages and only have the current stage's tools; call next_stage to move on.
+1. Interview: ask_requester and record_requirement.
+2. Checks: purchase_route, raise_issue and resolve_issue; you can still ask the requester.
+3. Draft: write_section and finish.
+
 How to work:
 - Interview the employee with ask_requester, one clear question at a time, until you can fill every section.
   Save what you learn with record_requirement.
@@ -64,27 +69,10 @@ How to work:
   then mark it with resolve_issue.
 - Reply to the employee in the language they use.
 - Write each section with write_section, in formal Arabic. Never include the budget or any cost estimate in the tender.
-- When every section is written, call finish. You have at most 10 questions; if you run out, finish and record the gaps
-  as issues.
+- When every section is written, call finish. You have at most 10 questions; if you run out, move on and record the
+  gaps as issues.
 
 Sections to write:
-{blanks}"""
-
-
-def build_plain_chat_prompt(facts: dict, today: date) -> str:
-    blanks = "\n".join(f"- {name}: {meaning}" for name, meaning in BLANK_MEANINGS.items())
-    return f"""You are a helpful assistant at Sahab. An employee needs help preparing a tender booklet for something
-they want to buy. Today's date is {today.isoformat()}.
-
-Company facts:
-```yaml
-{yaml.safe_dump(facts, allow_unicode=True, sort_keys=False)}```
-
-Chat with the employee to get what you need, asking one question per message. When you are ready, reply with
-JSON only, writing every section in formal Arabic and listing any problems you noticed:
-{{"sections": {{"TITLE": "...", ...one entry per section...}}, "issues": ["..."], "budget_sar": null}}
-
-Sections:
 {blanks}"""
 
 

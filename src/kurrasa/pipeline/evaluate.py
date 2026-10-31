@@ -26,6 +26,14 @@ def budget_leaked(tender: str, budget: int) -> bool:
     return any(re.search(rf"(?<![\d٠-٩]){re.escape(f)}(?![\d٠-٩])", tender) for f in forms)
 
 
+EQUIVALENT = re.compile(r"or equivalent|أو ما يعادل|أو ما يماثل|أو مكافئ|أو ما يكافئ", re.I)
+
+
+def brand_named(tender: str, names: list[str]) -> bool:
+    """A brand in the tender is only allowed with "or equivalent"."""
+    return any(n.lower() in tender.lower() for n in names) and not EQUIVALENT.search(tender)
+
+
 def majority(votes: list[bool]) -> bool:
     return sum(votes) * 2 > len(votes)
 
@@ -72,7 +80,7 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
     route = package["route"] or {}
     agreements = []
 
-    found = 0
+    found, missed = 0, []
     if tender:
         wanted = {r: hidden[r] for r in key["must_include"]}
         answers = readable([flag_list(ask(j, build_requirements_judge_prompt(tender, wanted))) for j in judges])
@@ -80,6 +88,8 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
             votes = [req in a for a in answers]
             agreements.append(len(set(votes)) == 1)
             found += majority(votes)
+            if not majority(votes):
+                missed.append(req)
 
     detected = []
     issues = [i["description"] for i in package["issues"]]
@@ -97,23 +107,26 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
         "method_ok": route.get("method") == key["expected_method"],
         "approver_ok": route.get("approver") == key["expected_approver"],
         "budget_leaked": budget_leaked(tender, key["budget_sar"]),
+        "brand_named": brand_named(tender, key.get("must_not_name", [])),
         "questions_asked": package["questions_asked"],
         "requirements_found": found,
         "requirements_total": len(key["must_include"]),
+        "requirements_missed": missed,
         "flags_detected": detected,
         "problem_caught": expected <= set(detected) if expected else None,
         "false_alarm": bool(set(detected) - expected),
         "judge_agreement": sum(agreements) / len(agreements) if agreements else None,
     }
-    scores["success"] = (scores["blanks_filled"] and scores["method_ok"] and scores["approver_ok"]
-                         and not scores["budget_leaked"] and found == scores["requirements_total"]
+    # the route is worked out by code from the budget, so it is reported but not part of success
+    scores["success"] = (scores["blanks_filled"] and found == scores["requirements_total"]
+                         and not scores["brand_named"]
                          and (scores["problem_caught"] if expected else not scores["false_alarm"]))
     (run_dir / "scores.json").write_text(json.dumps(scores, indent=2), encoding="utf-8")
     return scores
 
 
-METRICS = ["success", "requirements_found", "requirements_total", "problem_caught", "false_alarm", "method_ok",
-           "approver_ok", "budget_leaked", "blanks_filled", "questions_asked", "judge_agreement"]
+METRICS = ["success", "requirements_found", "requirements_total", "problem_caught", "false_alarm", "brand_named",
+           "method_ok", "approver_ok", "budget_leaked", "blanks_filled", "questions_asked", "judge_agreement"]
 
 
 def summarise(rows: list[dict], k: int = 3) -> list[dict]:
@@ -205,7 +218,7 @@ def rescore(results_root: Path, names: list[str], runs: int, judges: list) -> li
 def write_summary(rows: list[dict], k: int, out: Path = Path("results")):
     out.mkdir(exist_ok=True)
     with open(out / "summary.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["scenario", "group", "condition", "run", *METRICS, "flags_detected", "error"])
+        writer = csv.DictWriter(f, fieldnames=["scenario", "group", "condition", "run", *METRICS, "flags_detected", "requirements_missed", "error"])
         writer.writeheader()
         writer.writerows({key: v for key, v in r.items() if key in writer.fieldnames} for r in rows)
     for line in summarise(rows, k=k):

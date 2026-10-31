@@ -19,5 +19,6 @@ class Session:
     questions_asked: int = 0
     transcript: list[dict] = field(default_factory=list)
     pending_attachments: list[Path] = field(default_factory=list)
+    stage: str = "interview"   # interview -> checks -> draft
     interview_ended: bool = False
     finished: bool = False

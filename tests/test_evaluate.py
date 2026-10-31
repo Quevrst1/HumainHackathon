@@ -4,7 +4,7 @@ from pathlib import Path
 
 from langchain_core.messages import AIMessage
 
-from kurrasa.pipeline.evaluate import budget_leaked, majority, pass_k, score_run
+from kurrasa.pipeline.evaluate import brand_named, budget_leaked, majority, pass_k, score_run
 
 
 class ScriptedJudge:
@@ -150,3 +150,30 @@ def test_plain_chat_is_off_by_default():
     from kurrasa.pipeline.evaluate import conditions
     assert conditions(with_plain_chat=False) == ("agent",)
     assert conditions(with_plain_chat=True) == ("agent", "plain_chat")
+
+
+def test_brand_named_only_counts_without_or_equivalent():
+    assert brand_named("أجهزة Dell Latitude", ["Dell", "ديل"])
+    assert brand_named("أجهزة ديل", ["Dell", "ديل"])
+    assert not brand_named("أجهزة Dell أو ما يعادلها", ["Dell", "ديل"])
+    assert not brand_named("Dell or equivalent", ["Dell"])
+    assert not brand_named("معالج من فئة Core i5", ["Dell", "ديل"])
+
+
+def test_tender_naming_dell_fails_the_run(tmp_path):
+    run = make_run(tmp_path, GM_GENERAL, ["Spec names Dell only"], tender="توريد 200 جهاز Dell")
+    s = score_run(run, Path("scenarios/laptops_brand_locked"), [ScriptedJudge(["brand_lock"])])
+    assert s["brand_named"] and not s["success"]
+
+
+def test_success_ignores_the_route(tmp_path):
+    wrong_route = {"method": "direct purchase", "approver": "Purchasing Committee"}
+    s = score_run(make_run(tmp_path, wrong_route, ["Dell named"]), Path("scenarios/laptops_brand_locked"),
+                  [ScriptedJudge(["brand_lock"])])
+    assert not s["approver_ok"] and s["success"]
+
+
+def test_missed_requirements_are_named(tmp_path):
+    s = score_run(make_run(tmp_path, GM_GENERAL, ["Dell named"]), Path("scenarios/laptops_brand_locked"),
+                  [ScriptedJudge(["brand_lock"], found=["split", "std_spec", "eng_spec", "os_entra"])])
+    assert s["requirements_missed"] == ["keyboard", "warranty"]

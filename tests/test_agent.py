@@ -4,6 +4,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from kurrasa.agents.kurrasa import run_agent
 from kurrasa.agents.session import Message
+from kurrasa.agents.tools import STAGE_TOOLS
 from fakes import ScriptedLLM, StubRequester, call, finishing_script
 from kurrasa.config.prompts import build_agent_prompt
 from kurrasa.services.company import load_facts, load_template
@@ -63,3 +64,18 @@ def test_agent_prompt_asks_for_specifics_and_measurable_acceptance():
     assert "the usual" in p and "measurable" in p
     for word in ["cleaning", "service level", "SLA", "inspection"]:   # still generic: no planted-problem names
         assert word.lower() not in p.lower()
+
+
+def test_each_step_binds_only_the_current_stage_tools():
+    llm = ScriptedLLM(finishing_script())
+    run(llm)
+    assert llm.bound[0] == set(STAGE_TOOLS["interview"])
+    assert set(STAGE_TOOLS["draft"]) in llm.bound
+
+
+def test_out_of_stage_tool_is_refused():
+    early_write = AIMessage(content="", tool_calls=[call("write_section", {"name": "TITLE", "text": "t"})])
+    llm = ScriptedLLM([early_write, *finishing_script()])
+    package = run(llm)
+    assert "not available in the interview stage" in llm.received[1][-1].content
+    assert package["stopped_reason"] == "finished"

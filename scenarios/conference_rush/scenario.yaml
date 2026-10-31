@@ -3,7 +3,7 @@ pair: conference
 variant: problem
 type: non_tech
 category: events
-holdout: true
+holdout: false
 opening_request: "We need an events company to run our annual client conference. It has to happen in 2 weeks."
 requester:
   name: Reem Al-Dosari

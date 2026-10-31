@@ -9,8 +9,10 @@ class ScriptedLLM:
         self.replies = list(replies)
         self.repeat_last = repeat_last
         self.received = []
+        self.bound = []
 
     def bind_tools(self, tools):
+        self.bound.append({t.name for t in tools})
         return self
 
     def invoke(self, messages):
@@ -39,7 +41,9 @@ def finishing_script():
     writes = [call("write_section", {"name": b, "text": f"نص {b}"}, i) for i, b in enumerate(AGENT_BLANKS)]
     return [
         AIMessage(content="", tool_calls=[call("ask_requester", {"question": "How many users?"})]),
+        AIMessage(content="", tool_calls=[call("next_stage", {})]),
         AIMessage(content="", tool_calls=[call("purchase_route", {"budget_sar": 900_000})]),
+        AIMessage(content="", tool_calls=[call("next_stage", {}, 1)]),
         AIMessage(content="", tool_calls=writes),
         AIMessage(content="", tool_calls=[call("finish", {})]),
     ]

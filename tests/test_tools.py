@@ -1,5 +1,5 @@
 from kurrasa.agents.session import Message, Session
-from kurrasa.agents.tools import build_tools
+from kurrasa.agents.tools import STAGE_TOOLS, build_tools
 from kurrasa.services.company import AGENT_BLANKS, load_facts
 from kurrasa.services.events import EventLog
 
@@ -87,3 +87,27 @@ def test_every_tool_emits_one_event_with_stage():
         tools[name].invoke(args)
         assert len(events.events) == before + 1
         assert events.events[-1].tool == name and events.events[-1].stage == stage
+
+
+def test_stages_scope_the_tools():
+    assert set(STAGE_TOOLS["interview"]) == {"ask_requester", "record_requirement", "next_stage"}
+    assert {"purchase_route", "raise_issue", "resolve_issue", "ask_requester"} <= set(STAGE_TOOLS["checks"])
+    assert set(STAGE_TOOLS["draft"]) == {"write_section", "finish"}
+
+
+def test_entering_checks_lists_requirements_and_asks_to_record_problems():
+    session, events, _, tools = make()
+    tools["record_requirement"].invoke({"name": "users", "value": "120"})
+    result = tools["next_stage"].invoke({})
+    assert session.stage == "checks"
+    assert "users: 120" in result and "raise_issue" in result and "even if" in result
+    assert events.events[-1].tool == "next_stage" and events.events[-1].stage == "checks"
+
+
+def test_cannot_leave_checks_without_purchase_route():
+    session, _, _, tools = make()
+    tools["next_stage"].invoke({})
+    assert "purchase_route" in tools["next_stage"].invoke({}) and session.stage == "checks"
+    tools["purchase_route"].invoke({"budget_sar": 50_000})
+    tools["next_stage"].invoke({})
+    assert session.stage == "draft"
