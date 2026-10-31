@@ -136,7 +136,8 @@ def group_of(name: str) -> str:
 
 
 def log(text: str):
-    print(f"{datetime.now():%H:%M:%S}  {' '.join(text.split()) if text.startswith('    ') else text}", flush=True)
+    indent = "    " if text.startswith("    ") else ""
+    print(f"{datetime.now():%H:%M:%S}  {indent}{' '.join(text.split())}", flush=True)
 
 
 def log_step(event):
