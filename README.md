@@ -16,7 +16,7 @@ The test company, Sahab, is fictional, but its rules come from real sources.
 | PDPL and the SDAIA data-transfer regulation | rules on personal data | downloaded by hand from SDAIA |
 | NCA Essential Cybersecurity Controls (ECC-2:2024) | rules for cloud providers | `scripts/fetch_sources.py` |
 
-URLs, dates and SHA-256 hashes for the downloaded files are in `data/research/sources_manifest.json`. Sahab's profile and the test scenarios were written for this project, following those rules.
+URLs, dates and SHA-256 hashes for the downloaded files are in `data/research/sources_manifest.json`. Sahab's company details (`data/company/facts.yaml`) and the test scenarios were written for this project, following those rules.
 
 ## Setup
 
@@ -50,9 +50,27 @@ The purchasing method comes from the company thresholds in code, not from the mo
 
 ## Evaluation
 
-Ten scenarios in five pairs: each purchase has a version with one planted problem and a clean version without it. An LLM plays the requester and only reveals hidden requirements when asked. Three judges from different model families (DeepSeek, Llama 3.3 70B, Gemini Flash-Lite) score each tender against an answer key the agent never sees, by majority vote. One pair is held out and only run at the end.
+Ten scenarios in five pairs: each purchase has a version with one planted problem and a clean version without it. An LLM plays the requester and only reveals hidden requirements when asked. Three judges from different model families (DeepSeek, Llama 3.3 70B, Gemini Flash-Lite) score each tender against an answer key the agent never sees, by majority vote. One pair (the penetration test) is held out: we never looked at it while improving the agent, and it is reported separately.
 
-We measure whether the planted problem was recorded, false alarms on clean requests, and how many hidden requirements made it into the tender.
+Metrics: **issue detection** (the planted problem was flagged), **false positives** (a clean request was flagged) and **requirement completeness** (hidden requirements that made it into the tender).
+
+## Results
+
+One run per scenario, Gemma 4 26B as the agent and the simulated employee.
+
+| Scenario | Issue detected | False positive | Requirements |
+|---|---|---|---|
+| CRM system | yes | yes | 12 / 12 |
+| Laptops | yes | yes | 11 / 12 |
+| Cloud backup | yes | no | 12 / 12 |
+| Client conference | yes | no | 12 / 12 |
+| Penetration test (held out) | no | no | 6 / 10 |
+
+- Issue detection: 4 of 5 (4 of 4 on the main set).
+- False positives: 2 of 5 clean requests.
+- Requirement completeness: 91%. The judges agreed on 92% of decisions.
+
+On the held-out pen test, Kurrasa wrote acceptance criteria into the tender but did not flag their absence as an issue. Its false positives were minor wording points on clean requests, so the next step is calibrating what counts as a problem.
 
 ## Layout
 
