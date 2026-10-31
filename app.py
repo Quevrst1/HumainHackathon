@@ -13,9 +13,9 @@ from kurrasa.ui.timeline import build_timeline, render_timeline
 
 UPLOADS = Path("results") / "uploads"
 
-st.set_page_config(page_title="Kurrasa", layout="wide")
-st.title("Kurrasa")
-st.caption("AI procurement agent for Sahab")
+st.set_page_config(page_title="AI Tender Agent", layout="wide")
+st.title("AI Tender Agent")
+st.caption("Kurrasa (كراسة) · procurement for Sahab")
 
 
 def save_uploads(files) -> list[Path]:
