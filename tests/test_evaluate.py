@@ -60,21 +60,19 @@ def test_false_alarm_on_clean(tmp_path):
     assert s["false_alarm"] and s["problem_caught"] is None
 
 
-def test_summarise_separates_holdout_and_conditions():
+def test_summarise_separates_holdout():
     from kurrasa.pipeline.evaluate import summarise
-    base = dict(scenario="s1", success=True, requirements_total=6, problem_caught=None, false_alarm=False, method_ok=True, approver_ok=True,
-                budget_leaked=False, blanks_filled=True, questions_asked=4, judge_agreement=1.0)
+    base = dict(scenario="s1", success=True, requirements_total=6, problem_caught=None, false_alarm=False,
+                questions_asked=4, judge_agreement=1.0)
     rows = [
-        {**base, "group": "main", "condition": "agent", "requirements_found": 6},
-        {**base, "group": "main", "condition": "agent", "requirements_found": 3},
-        {**base, "group": "main", "condition": "plain_chat", "requirements_found": 0},
-        {**base, "group": "holdout", "condition": "agent", "requirements_found": 6},
-        {"group": "main", "condition": "agent", "error": "quota"},
+        {**base, "group": "main", "requirements_found": 6},
+        {**base, "group": "main", "requirements_found": 3},
+        {**base, "group": "holdout", "requirements_found": 6},
+        {"group": "main", "error": "quota"},
     ]
-    out = {(r["group"], r["condition"]): r for r in summarise(rows)}
-    assert out[("main", "agent")]["runs"] == 2 and out[("main", "agent")]["requirements_recall"] == 0.75
-    assert out[("main", "plain_chat")]["requirements_recall"] == 0
-    assert out[("holdout", "agent")]["runs"] == 1
+    out = {r["group"]: r for r in summarise(rows, k=1)}
+    assert out["main"]["runs"] == 2 and out["main"]["requirements_recall"] == 0.75
+    assert out["holdout"]["runs"] == 1
 
 
 def test_pass_k():
@@ -100,9 +98,8 @@ def test_batched_requirement_judge(tmp_path):
 def test_rescore_scores_saved_runs_without_rerunning(tmp_path):
     from kurrasa.pipeline.evaluate import rescore
     make_run(tmp_path / "laptops_brand_locked" / "agent" / "eval1", GM_GENERAL, ["Dell named"])
-    make_run(tmp_path / "laptops_brand_locked" / "plain_chat" / "eval1", GM_GENERAL, [])
     rows = rescore(tmp_path, ["laptops_brand_locked", "laptops_clean"], runs=2, judges=[ScriptedJudge(["brand_lock"])])
-    assert [(r["condition"], r["run"]) for r in rows] == [("agent", 1), ("plain_chat", 1)]   # missing runs skipped
+    assert [(r["scenario"], r["run"]) for r in rows] == [("laptops_brand_locked", 1)]   # missing runs skipped
     assert rows[0]["problem_caught"] and rows[0]["group"] == "main"
     assert (tmp_path / "laptops_brand_locked" / "agent" / "eval1" / "scores.json").exists()
 
@@ -144,12 +141,6 @@ def test_all_judges_unreadable_is_an_error(tmp_path):
     run = make_run(tmp_path, GM_GENERAL, ["Dell named"])
     with pytest.raises(ValueError, match="readable"):
         score_run(run, Path("scenarios/laptops_brand_locked"), [GarbledJudge(), GarbledJudge()])
-
-
-def test_plain_chat_is_off_by_default():
-    from kurrasa.pipeline.evaluate import conditions
-    assert conditions(with_plain_chat=False) == ("agent",)
-    assert conditions(with_plain_chat=True) == ("agent", "plain_chat")
 
 
 def test_brand_named_only_counts_without_or_equivalent():

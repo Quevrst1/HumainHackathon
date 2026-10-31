@@ -6,10 +6,10 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Run outputs (transcripts, drafted tenders, metrics)
+# Run outputs: transcripts, tenders, scores, UI sessions
 results/
 
-# Raw scraped pages from step 0 research (keep notes, not dumps)
+# Raw downloads (re-fetch with the scripts)
 data/research/raw/
 
 # Markdown files are local-only (docs, data log, company docs)

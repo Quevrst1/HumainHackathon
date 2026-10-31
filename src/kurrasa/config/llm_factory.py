@@ -15,17 +15,7 @@ LLM_HTTP_TIMEOUT = 90    # per-client HTTP timeout
 
 
 def _with_timeout_and_retry(fn, *args, **kwargs):
-    """
-    Run fn with a hard timeout, retrying up to LLM_MAX_RETRIES times.
-
-    Args:
-        fn:       Callable to invoke (typically an LLM _generate method).
-        *args:    Positional arguments forwarded to fn.
-        **kwargs: Keyword arguments forwarded to fn.
-
-    Returns:
-        Whatever fn returns on success; raises the last error after all retries.
-    """
+    """Call fn with a hard timeout; retry on timeouts and API errors."""
     last_error = None
     for attempt in range(1, LLM_MAX_RETRIES + 1):
         executor = ThreadPoolExecutor(max_workers=1)
@@ -39,7 +29,7 @@ def _with_timeout_and_retry(fn, *args, **kwargs):
                 time.sleep(LLM_RETRY_DELAY)
         except Exception as e:
             last_error = e
-            # Honour the API-suggested delay on rate limits; keep the log line short
+            # wait as long as the API asks to on rate limits
             m = re.search(r'retry in (\d+(?:\.\d+)?)s', str(e))
             delay = float(m.group(1)) + 5 if m else LLM_RETRY_DELAY
             reason = "rate limit" if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e) else str(e).splitlines()[0][:80]
@@ -54,9 +44,9 @@ def _with_timeout_and_retry(fn, *args, **kwargs):
 
 
 class _TimeoutLLM(BaseChatModel):
-    """Wraps any BaseChatModel with a hard timeout and automatic retry."""
+    """Any chat model, with a hard timeout and retries."""
     inner: object
-    bound: dict = {}   # tool definitions from bind_tools, passed on every call
+    bound: dict = {}   # tool definitions from bind_tools
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -68,21 +58,19 @@ class _TimeoutLLM(BaseChatModel):
         return "timeout-wrapped"
 
     def bind_tools(self, tools, **kwargs):
-        # Keep the tool definitions and pass them on every call; wrapping the binding itself drops them
+        # wrapping the bound model would drop the tools, so keep its kwargs instead
         return _TimeoutLLM(inner=self.inner, bound=self.inner.bind_tools(tools, **kwargs).kwargs)
 
 
-# Default model per provider
 DEFAULT_MODELS = {
-    "gemini":     "gemini-2.5-flash",
+    "gemini":     "gemma-4-26b-a4b-it",
     "ollama":     "qwen2.5:14b",
     "openrouter": "meta-llama/llama-3.3-70b-instruct",
     "deepseek":   "deepseek-chat",
     "nvidia":     "qwen/qwen2.5-coder-32b-instruct",
 }
 
-# OpenAI-compatible providers: provider -> (base_url, Env attribute holding the key).
-# Adding one (e.g. a HUMAIN endpoint) is a single line here plus a DEFAULT_MODELS entry.
+# provider -> (base url, name of the key in .env)
 OPENAI_COMPATIBLE = {
     "openrouter": ("https://openrouter.ai/api/v1",         "OPENROUTER_API_KEY"),
     "deepseek":   ("https://api.deepseek.com/v1",          "DEEPSEEK_API_KEY"),
@@ -91,17 +79,6 @@ OPENAI_COMPATIBLE = {
 
 
 def create_llm(provider: str = "gemini", model: str = None, temperature: float = None) -> BaseChatModel:
-    """
-    Build a LangChain chat model for the requested provider.
-
-    Args:
-        provider:    Provider key (gemini, ollama, or any key in OPENAI_COMPATIBLE).
-        model:       Model name override. Falls back to DEFAULT_MODELS[provider].
-        temperature: Sampling temperature; None leaves the provider default.
-
-    Returns:
-        Configured BaseChatModel, wrapped with timeout/retry.
-    """
     env = Env()
     model_name = model or DEFAULT_MODELS[provider]
     extra = {} if temperature is None else {"temperature": temperature}

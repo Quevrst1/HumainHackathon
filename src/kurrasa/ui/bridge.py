@@ -15,8 +15,7 @@ def form_message(department: str, need: str, budget_sar: int) -> str:
 
 
 def finance_review(events: EventLog, department: str, budget_sar: int, previous_sar: int | None = None) -> dict:
-    """Simulated budget check (not built yet), re-run whenever the budget changes.
-    Edge case: Finance can't confirm its own budget (segregation of duties), so its own requests go to the General Manager."""
+    """Simulated budget check. Finance can't confirm its own budget, so its requests go to the General Manager."""
     amount = f"SAR {budget_sar:,}" if previous_sar is None else f"changed from SAR {previous_sar:,} to SAR {budget_sar:,}"
     if department == "Finance":
         review = {"step": "finance", "status": "escalated", "simulated": True, "budget_sar": budget_sar,
@@ -30,14 +29,14 @@ def finance_review(events: EventLog, department: str, budget_sar: int, previous_
 
 
 def legal_review(events: EventLog) -> dict:
-    """Simulated contract-terms review (not built yet): always approves."""
+    """Simulated contract review: always approves."""
     review = {"step": "legal", "status": "approved", "note": "Contract terms approved", "simulated": True}
     events.emit("legal", "review", f"{review['note']} (simulated)", review)
     return review
 
 
 class UIRequester:
-    """The person using the UI: the agent's questions wait here until they answer."""
+    """The person using the UI. Questions wait here until they answer."""
 
     def __init__(self, opening: Message):
         self._opening = opening
@@ -51,14 +50,14 @@ class UIRequester:
     def reply(self, question: str) -> Message:
         self.chat.append({"role": "agent", "text": question})
         self.question = question
-        answer = self._answers.get()   # blocks the agent thread until the person answers
+        answer = self._answers.get()   # blocks the agent thread
         self.question = None
         self.chat.append({"role": "requester", "text": answer.text})
         return answer
 
 
 class AgentRunner:
-    """Runs one Kurrasa session in a background thread so a UI can stay responsive."""
+    """Runs one Kurrasa session in a background thread."""
 
     def __init__(self, llm, out_root: Path = Path("results")):
         self.llm = llm
@@ -84,7 +83,7 @@ class AgentRunner:
             reviews = []
 
             def finance_checks(event):
-                # Finance checks the budget right after the request, and again whenever the agent settles on a new one
+                # Finance checks the budget after the request, and again if the agent's budget differs
                 if event.stage == "request":
                     reviews.append(finance_review(self.events, self.department, self.budget_sar))
                 elif event.tool == "purchase_route" and "budget_sar" in event.data:
@@ -101,7 +100,7 @@ class AgentRunner:
             save_package(self.out_dir, self.package)
             if self.package["tender"]:
                 self.events.emit("generation", "generate", "Tender and PDF generated", {"folder": str(self.out_dir)})
-        except Exception as e:   # surface the failure in the UI instead of dying silently
+        except Exception as e:   # show it in the UI
             self.error = str(e)
         self.done = True
 

@@ -15,7 +15,7 @@ class Event:
 
 
 class EventLog:
-    """Collects what the agent does and passes each step to whoever is listening (terminal, file, UI)."""
+    """What the agent did, step by step. Listeners (terminal, file, UI) get each event as it happens."""
 
     def __init__(self):
         self.events: list[Event] = []

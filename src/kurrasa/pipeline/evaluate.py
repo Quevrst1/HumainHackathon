@@ -11,7 +11,6 @@ from langchain_core.messages import HumanMessage
 
 from kurrasa.config import AGENT_MODELS, JUDGE_MODELS, create_llm
 from kurrasa.config.prompts import build_flag_judge_prompt, build_requirements_judge_prompt
-from kurrasa.pipeline.plain_chat import run_plain_chat
 from kurrasa.pipeline.run import SCENARIOS, run_scenario
 
 ARABIC_DIGITS = str.maketrans("0123456789,", "٠١٢٣٤٥٦٧٨٩٬")
@@ -48,21 +47,21 @@ def ask(judge, prompt: str) -> str:
 
 
 def flag_list(text: str) -> list[str] | None:
-    """The JSON list in a judge's answer, or None if there is none to read (the judge then abstains).
-    Tries each [...] from the last one back, so prose with other brackets before the list still parses."""
+    """The JSON list in a judge's answer, or None if there isn't one (that judge then abstains)."""
+    # judges sometimes write prose with other brackets first, so try the last [...] first
     for candidate in reversed(re.findall(r"\[[^\[\]]*\]", text)):
         try:
             items = json.loads(candidate)
         except json.JSONDecodeError:
             continue
         if isinstance(items, list):
-            # some judges add an explanation after the id ("users: 120 users"); keep just the id
+            # "users: 120 users" -> "users"
             return [str(i).split(":")[0].strip() for i in items]
     return None
 
 
 def readable(answers: list) -> list[list[str]]:
-    """Drop judges whose answer couldn't be read; an unreadable answer must never count as a 'no'."""
+    """Drop unreadable answers so they don't count as a "no"."""
     kept = [a for a in answers if a is not None]
     if not kept:
         raise ValueError("no judge gave a readable answer")
@@ -87,8 +86,9 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
         for req in wanted:
             votes = [req in a for a in answers]
             agreements.append(len(set(votes)) == 1)
-            found += majority(votes)
-            if not majority(votes):
+            if majority(votes):
+                found += 1
+            else:
                 missed.append(req)
 
     detected = []
@@ -117,7 +117,7 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
         "false_alarm": bool(set(detected) - expected),
         "judge_agreement": sum(agreements) / len(agreements) if agreements else None,
     }
-    # the route is worked out by code from the budget, so it is reported but not part of success
+    # the route comes from code (purchase_route), so it is reported but not part of success
     scores["success"] = (scores["blanks_filled"] and found == scores["requirements_total"]
                          and not scores["brand_named"]
                          and (scores["problem_caught"] if expected else not scores["false_alarm"]))
@@ -129,35 +129,31 @@ METRICS = ["success", "requirements_found", "requirements_total", "problem_caugh
            "method_ok", "approver_ok", "budget_leaked", "blanks_filled", "questions_asked", "judge_agreement"]
 
 
-def summarise(rows: list[dict], k: int = 3) -> list[dict]:
-    """tau-bench style summary per condition, separately for the main set and the hold-out pair."""
+def summarise(rows: list[dict], k: int) -> list[dict]:
+    """One summary line for the main set and one for the hold-out."""
     out = []
     for group in ("main", "holdout"):
-        for condition in ("plain_chat", "agent"):
-            subset = [r for r in rows if r["group"] == group and r["condition"] == condition and "error" not in r]
-            if not subset:
-                continue
-            mean = lambda key: sum(r[key] for r in subset if r[key] is not None) / max(1, sum(r[key] is not None for r in subset))
-            by_scenario = {}
-            for r in subset:
-                by_scenario.setdefault(r["scenario"], []).append(r["success"])
-            full = [s for s in by_scenario.values() if len(s) >= k]
-            out.append({
-                "group": group, "condition": condition, "runs": len(subset),
-                "successes": f"{sum(r['success'] for r in subset)}/{len(subset)}",
-                "pass^1": mean("success"),
-                f"pass^{k}": sum(pass_k(s, k) for s in full) / len(full) if full else None,
-                "requirements_recall": sum(r["requirements_found"] for r in subset) / sum(r["requirements_total"] for r in subset),
-                "problems_caught": mean("problem_caught"), "false_alarms": mean("false_alarm"),
-                "route_correct": mean("method_ok") * 0.5 + mean("approver_ok") * 0.5,
-                "budget_leaks": mean("budget_leaked"), "avg_questions": mean("questions_asked"),
-                "judge_agreement": mean("judge_agreement"),
-            })
+        subset = [r for r in rows if r["group"] == group and "error" not in r]
+        if not subset:
+            continue
+
+        def mean(key):
+            values = [r[key] for r in subset if r[key] is not None]
+            return sum(values) / len(values) if values else None
+
+        by_scenario = {}
+        for r in subset:
+            by_scenario.setdefault(r["scenario"], []).append(r["success"])
+        full = [s for s in by_scenario.values() if len(s) >= k]
+        out.append({
+            "group": group, "runs": len(subset),
+            "successes": f"{sum(r['success'] for r in subset)}/{len(subset)}",
+            f"pass^{k}": sum(pass_k(s, k) for s in full) / len(full) if full else None,
+            "requirements_recall": sum(r["requirements_found"] for r in subset) / sum(r["requirements_total"] for r in subset),
+            "problems_caught": mean("problem_caught"), "false_alarms": mean("false_alarm"),
+            "avg_questions": mean("questions_asked"), "judge_agreement": mean("judge_agreement"),
+        })
     return out
-
-
-def conditions(with_plain_chat: bool) -> tuple[str, ...]:
-    return ("agent", "plain_chat") if with_plain_chat else ("agent",)
 
 
 def group_of(name: str) -> str:
@@ -170,11 +166,10 @@ def log(text: str):
 
 
 def log_step(event):
-    """The agent steps worth seeing in the experiment log."""
     if event.tool == "ask_requester" and "question" in event.data:
         log(f"    asked: {' '.join(event.data['question'].split())[:110]}")
-    elif event.tool == "purchase_route":
-        log(f"    route: {event.summary}")
+    elif event.tool == "next_stage" and event.summary.endswith("request"):
+        log("    checks")
     elif event.tool == "raise_issue":
         log(f"    issue: {event.data.get('description', '')[:100]}")
     elif event.tool == "resolve_issue" and event.data.get("resolution"):
@@ -182,55 +177,55 @@ def log_step(event):
 
 
 def result_line(s: dict) -> str:
-    check = "problem caught" if s["problem_caught"] is not None else "false alarm"
-    value = s["problem_caught"] if s["problem_caught"] is not None else s["false_alarm"]
+    planted = s["problem_caught"] is not None
+    check = f"problem caught: {'yes' if s['problem_caught'] else 'no'}" if planted else \
+            f"false alarm: {'yes' if s['false_alarm'] else 'no'}"
+    missed = f" (missed {', '.join(s['requirements_missed'])})" if s["requirements_missed"] else ""
     agreement = f"{s['judge_agreement']:.0%}" if s["judge_agreement"] is not None else "n/a"
     return (f"{'success' if s['success'] else 'fail'} | requirements {s['requirements_found']}/{s['requirements_total']}"
-            f" | {check}: {'yes' if value else 'no'} | route {'ok' if s['method_ok'] and s['approver_ok'] else 'wrong'}"
-            f" | budget leaked: {'yes' if s['budget_leaked'] else 'no'} | {s['questions_asked']} questions"
+            f"{missed} | {check}{' | brand named' if s['brand_named'] else ''} | {s['questions_asked']} questions"
             f" | judges agree {agreement}")
 
 
-def scored_row(name: str, condition: str, i: int, run_and_score, label: str = "") -> dict:
-    row = {"scenario": name, "group": group_of(name), "condition": condition, "run": i}
-    log(f"{label}{name} / {'kurrasa' if condition == 'agent' else condition} / run {i}")
+def scored_row(name: str, i: int, run_and_score, label: str = "") -> dict:
+    row = {"scenario": name, "group": group_of(name), "run": i}
+    log(f"{label}{name} / run {i}")
     try:
         row.update(run_and_score())
         log(f"    -> {result_line(row)}")
-    except Exception as e:   # one failed run or judge call (e.g. quota) shouldn't lose the rest
+    except Exception as e:   # e.g. a quota error: keep going with the other runs
         row["error"] = str(e)[:200]
         log(f"    -> error: {row['error']}")
     return row
 
 
 def rescore(results_root: Path, names: list[str], runs: int, judges: list) -> list[dict]:
-    """Score runs already saved under results_root again, without re-running the agent (e.g. after a judge quota ran out)."""
+    """Judge saved runs again without re-running the agent."""
     rows = []
     for name in names:
         for i in range(1, runs + 1):
-            for condition in ("agent", "plain_chat"):
-                run_dir = results_root / name / condition / f"eval{i}"
-                if (run_dir / "package.json").exists():
-                    rows.append(scored_row(name, condition, i, lambda: score_run(run_dir, SCENARIOS / name, judges)))
+            run_dir = results_root / name / "agent" / f"eval{i}"
+            if (run_dir / "package.json").exists():
+                rows.append(scored_row(name, i, lambda: score_run(run_dir, SCENARIOS / name, judges)))
     return rows
 
 
 def write_summary(rows: list[dict], k: int, out: Path = Path("results")):
     out.mkdir(exist_ok=True)
+    columns = ["scenario", "group", "run", *METRICS, "flags_detected", "requirements_missed", "error"]
     with open(out / "summary.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["scenario", "group", "condition", "run", *METRICS, "flags_detected", "requirements_missed", "error"])
+        writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
-        writer.writerows({key: v for key, v in r.items() if key in writer.fieldnames} for r in rows)
+        writer.writerows({key: v for key, v in r.items() if key in columns} for r in rows)
     for line in summarise(rows, k=k):
         print(" | ".join(f"{key}={v:.2f}" if isinstance(v, float) else f"{key}={v}" for key, v in line.items()))
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run every scenario with plain chat (A) and Kurrasa (C), then score them.")
-    parser.add_argument("--runs", type=int, default=3)
+    parser = argparse.ArgumentParser(description="Run Kurrasa on every scenario and score the results.")
+    parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--scenarios", nargs="*", help="default: all scenarios")
     parser.add_argument("--rescore", action="store_true", help="only re-score runs already saved in results/")
-    parser.add_argument("--with-plain-chat", action="store_true", help="also run the plain-chat comparison")
     args = parser.parse_args()
 
     names = args.scenarios or sorted(p.name for p in SCENARIOS.iterdir() if p.is_dir())
@@ -241,19 +236,14 @@ def main():
     else:
         agent_llm = create_llm(**AGENT_MODELS["agent"])
         requester_llm = create_llm(**AGENT_MODELS["requester"])
-        chosen = conditions(args.with_plain_chat)
-        rows, total = [], len(names) * args.runs * len(chosen)
-        log(f"experiment: {len(names)} scenarios x {args.runs} runs x {len(chosen)} condition(s) = {total} runs")
+        rows, total = [], len(names) * args.runs
+        log(f"experiment: {len(names)} scenarios x {args.runs} runs = {total} runs")
         log(f"agent and requester: {AGENT_MODELS['agent']['model']} | judges: {', '.join(j['model'] for j in JUDGE_MODELS)}")
         for name in names:
             for i in range(1, args.runs + 1):
-                rows.append(scored_row(name, "agent", i, lambda: score_run(
+                rows.append(scored_row(name, i, lambda: score_run(
                     run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False, listener=log_step),
                     SCENARIOS / name, judges), label=f"[{len(rows) + 1}/{total}] "))
-                if "plain_chat" in chosen:
-                    rows.append(scored_row(name, "plain_chat", i, lambda: score_run(
-                        run_plain_chat(name, f"eval{i}", agent_llm, requester_llm), SCENARIOS / name, judges),
-                        label=f"[{len(rows) + 1}/{total}] "))
         log("all runs finished")
 
     write_summary(rows, k=args.runs)
