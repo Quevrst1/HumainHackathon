@@ -105,3 +105,10 @@ def test_rescore_scores_saved_runs_without_rerunning(tmp_path):
     assert [(r["condition"], r["run"]) for r in rows] == [("agent", 1), ("plain_chat", 1)]   # missing runs skipped
     assert rows[0]["problem_caught"] and rows[0]["group"] == "main"
     assert (tmp_path / "laptops_brand_locked" / "agent" / "eval1" / "scores.json").exists()
+
+
+def test_flag_list_tolerates_ids_with_explanations():
+    from kurrasa.pipeline.evaluate import flag_list
+    assert flag_list('["users: 120 users", "odoo"]') == ["users", "odoo"]
+    assert flag_list('Answer: ["brand_lock"]') == ["brand_lock"]
+    assert flag_list("none apply") == []

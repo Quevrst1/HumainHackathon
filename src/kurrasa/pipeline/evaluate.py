@@ -41,9 +41,11 @@ def ask(judge, prompt: str) -> str:
 def flag_list(text: str) -> list[str]:
     start, end = text.find("["), text.rfind("]")
     try:
-        return json.loads(text[start:end + 1]) if start != -1 else []
+        items = json.loads(text[start:end + 1]) if start != -1 else []
     except json.JSONDecodeError:
         return []
+    # some judges add an explanation after the id ("users: 120 users"); keep just the id
+    return [str(i).split(":")[0].strip() for i in items]
 
 
 def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
