@@ -105,7 +105,14 @@ def review_panel(runner: AgentRunner):
                     unsafe_allow_html=True)
 
 
-runner: AgentRunner | None = st.session_state.get("runner")
+@st.cache_resource
+def active() -> dict:
+    """The running request, kept on the server so a page that reconnects picks it back up."""
+    return {}
+
+
+runner: AgentRunner | None = st.session_state.get("runner") or active().get("runner")
+st.session_state.runner = runner
 request_tab, status_tab, logs_tab, review_tab = st.tabs(["Request", "Status", "Logs", "Review"])
 
 with request_tab:
@@ -121,12 +128,12 @@ with request_tab:
                 else:
                     runner = AgentRunner(create_llm(**AGENT_MODELS["agent"]))
                     runner.start(department, need.strip(), int(budget), save_uploads(files))
-                    st.session_state.runner = runner
+                    st.session_state.runner = active()["runner"] = runner
                     st.rerun()
     else:
         chat_panel(runner)
         if st.button("New request"):
-            del st.session_state["runner"]
+            st.session_state.runner = active()["runner"] = None
             st.rerun()
 
 with status_tab:
