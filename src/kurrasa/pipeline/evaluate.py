@@ -39,14 +39,26 @@ def ask(judge, prompt: str) -> str:
     return judge.invoke([HumanMessage(content=prompt)]).text.strip()
 
 
-def flag_list(text: str) -> list[str]:
-    start, end = text.find("["), text.rfind("]")
-    try:
-        items = json.loads(text[start:end + 1]) if start != -1 else []
-    except json.JSONDecodeError:
-        return []
-    # some judges add an explanation after the id ("users: 120 users"); keep just the id
-    return [str(i).split(":")[0].strip() for i in items]
+def flag_list(text: str) -> list[str] | None:
+    """The JSON list in a judge's answer, or None if there is none to read (the judge then abstains).
+    Tries each [...] from the last one back, so prose with other brackets before the list still parses."""
+    for candidate in reversed(re.findall(r"\[[^\[\]]*\]", text)):
+        try:
+            items = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(items, list):
+            # some judges add an explanation after the id ("users: 120 users"); keep just the id
+            return [str(i).split(":")[0].strip() for i in items]
+    return None
+
+
+def readable(answers: list) -> list[list[str]]:
+    """Drop judges whose answer couldn't be read; an unreadable answer must never count as a 'no'."""
+    kept = [a for a in answers if a is not None]
+    if not kept:
+        raise ValueError("no judge gave a readable answer")
+    return kept
 
 
 def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
@@ -63,7 +75,7 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
     found = 0
     if tender:
         wanted = {r: hidden[r] for r in key["must_include"]}
-        answers = [flag_list(ask(j, build_requirements_judge_prompt(tender, wanted))) for j in judges]
+        answers = readable([flag_list(ask(j, build_requirements_judge_prompt(tender, wanted))) for j in judges])
         for req in wanted:
             votes = [req in a for a in answers]
             agreements.append(len(set(votes)) == 1)
@@ -72,7 +84,7 @@ def score_run(run_dir: Path, scenario_dir: Path, judges: list) -> dict:
     detected = []
     issues = [i["description"] for i in package["issues"]]
     if issues:
-        answers = [flag_list(ask(j, build_flag_judge_prompt(issues, flags))) for j in judges]
+        answers = readable([flag_list(ask(j, build_flag_judge_prompt(issues, flags))) for j in judges])
         for flag in flags:
             votes = [flag in a for a in answers]
             agreements.append(len(set(votes)) == 1)

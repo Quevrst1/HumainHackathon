@@ -111,4 +111,36 @@ def test_flag_list_tolerates_ids_with_explanations():
     from kurrasa.pipeline.evaluate import flag_list
     assert flag_list('["users: 120 users", "odoo"]') == ["users", "odoo"]
     assert flag_list('Answer: ["brand_lock"]') == ["brand_lock"]
-    assert flag_list("none apply") == []
+    assert flag_list("none apply") is None   # unreadable: the judge abstains
+
+
+def test_flag_list_finds_the_list_after_prose_with_brackets():
+    from kurrasa.pipeline.evaluate import flag_list
+    raw = 'After reviewing the tender [sections 20-22], these are stated:\n* sites\n\n```json\n["sites", "hours"]\n```'
+    assert flag_list(raw) == ["sites", "hours"]
+
+
+def test_unreadable_answer_is_none_not_an_empty_list():
+    from kurrasa.pipeline.evaluate import flag_list
+    assert flag_list("I could not decide.") is None
+    assert flag_list("[]") == []
+
+
+class GarbledJudge:
+    def invoke(self, messages):
+        return AIMessage(content="I could not decide.")
+
+
+def test_unreadable_judge_abstains_instead_of_voting_no(tmp_path):
+    run = make_run(tmp_path, GM_GENERAL, ["Dell named"])
+    s = score_run(run, Path("scenarios/laptops_brand_locked"),
+                  [ScriptedJudge(["brand_lock"]), ScriptedJudge(["brand_lock"]), GarbledJudge()])
+    assert s["requirements_found"] == 6 and s["problem_caught"]
+    assert s["judge_agreement"] == 1.0   # the two readable judges agreed; the garbled one abstained
+
+
+def test_all_judges_unreadable_is_an_error(tmp_path):
+    import pytest
+    run = make_run(tmp_path, GM_GENERAL, ["Dell named"])
+    with pytest.raises(ValueError, match="readable"):
+        score_run(run, Path("scenarios/laptops_brand_locked"), [GarbledJudge(), GarbledJudge()])
