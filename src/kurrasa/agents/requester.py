@@ -1,14 +1,9 @@
 from pathlib import Path
-from typing import Protocol
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from kurrasa.agents.session import Message
 from kurrasa.config.prompts import build_requester_prompt
-
-
-class Requester(Protocol):
-    def reply(self, question: str) -> Message: ...
 
 
 class HumanRequester:

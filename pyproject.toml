@@ -16,7 +16,6 @@ dependencies = [
     "langchain",
     "langchain-google-genai",
     "langchain-openai",
-    "langchain-ollama",
     "pytest",
 ]
 

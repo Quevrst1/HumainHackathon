@@ -1,7 +1,6 @@
-"""Pull Etimad tender listings or award results through Apify.
+"""Pull Etimad tender listings through Apify.
 
-    python scripts/fetch_etimad.py tenders [--max 300] [--keywords CRM]
-    python scripts/fetch_etimad.py awards  [--max 100]
+    python scripts/fetch_etimad.py [--max 300] [--keywords CRM]
 """
 
 import argparse
@@ -17,27 +16,18 @@ from kurrasa.config import Env
 API = "https://api.apify.com/v2"
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "research" / "raw" / "etimad"
 
-ACTORS = {
-    "tenders": "gulfdata~etimad-tenders-monitor",
-    "awards":  "dottti~etimad-awards",
-}
+ACTOR = "gulfdata~etimad-tenders-monitor"
 
 
-def build_input(dataset: str, max_items: int, keywords: str) -> dict:
-    if dataset == "tenders":
-        return {
-            "keywords": keywords,
-            "pageSize": 24,                       # Etimad serves 24 per page regardless
-            "maxPages": -(-max_items // 24),
-            "monitorMode": False,                 # True only returns tenders unseen by earlier runs
-            "useResidentialProxy": True,          # Etimad blocks datacenter IPs
-            "proxyCountryCode": "SA",
-            "includeRaw": True,
-        }
+def build_input(max_items: int, keywords: str) -> dict:
     return {
-        "keywords": [keywords] if keywords else [],
-        "maxItems": max_items,
-        "maxTendersChecked": max_items * 3,       # not every tender has an award yet
+        "keywords": keywords,
+        "pageSize": 24,                       # Etimad serves 24 per page regardless
+        "maxPages": -(-max_items // 24),
+        "monitorMode": False,                 # True only returns tenders unseen by earlier runs
+        "useResidentialProxy": True,          # Etimad blocks datacenter IPs
+        "proxyCountryCode": "SA",
+        "includeRaw": True,
     }
 
 
@@ -59,22 +49,21 @@ def run_actor(actor: str, actor_input: dict, token: str) -> tuple[dict, list]:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("dataset", choices=ACTORS)
     parser.add_argument("--max", type=int, default=300)
     parser.add_argument("--keywords", default="")
     args = parser.parse_args()
 
-    actor_input = build_input(args.dataset, args.max, args.keywords)
-    run, items = run_actor(ACTORS[args.dataset], actor_input, Env().APIFY_TOKEN)
+    actor_input = build_input(args.max, args.keywords)
+    run, items = run_actor(ACTOR, actor_input, Env().APIFY_TOKEN)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    out = OUT_DIR / f"{args.dataset}_{stamp}.json"
+    out = OUT_DIR / f"tenders_{stamp}.json"
     out.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # Run details so the pull can be traced back to Apify
     meta = {
-        "actor": ACTORS[args.dataset],
+        "actor": ACTOR,
         "input": actor_input,
         "run_id": run["id"],
         "started_at": run["startedAt"],

@@ -64,17 +64,14 @@ class _TimeoutLLM(BaseChatModel):
 
 DEFAULT_MODELS = {
     "gemini":     "gemma-4-26b-a4b-it",
-    "ollama":     "qwen2.5:14b",
     "openrouter": "meta-llama/llama-3.3-70b-instruct",
     "deepseek":   "deepseek-chat",
-    "nvidia":     "qwen/qwen2.5-coder-32b-instruct",
 }
 
 # provider -> (base url, name of the key in .env)
 OPENAI_COMPATIBLE = {
     "openrouter": ("https://openrouter.ai/api/v1",         "OPENROUTER_API_KEY"),
     "deepseek":   ("https://api.deepseek.com/v1",          "DEEPSEEK_API_KEY"),
-    "nvidia":     ("https://integrate.api.nvidia.com/v1",  "NVIDIA_API_KEY"),
 }
 
 
@@ -92,10 +89,6 @@ def create_llm(provider: str = "gemini", model: str = None, temperature: float =
             **extra,
         ))
 
-    if provider == "ollama":
-        from langchain_ollama import ChatOllama
-        return _TimeoutLLM(inner=ChatOllama(model=model_name, base_url=env.OLLAMA_BASE_URL, **extra))
-
     if provider in OPENAI_COMPATIBLE:
         from langchain_openai import ChatOpenAI
         base_url, key_attr = OPENAI_COMPATIBLE[provider]
@@ -107,4 +100,4 @@ def create_llm(provider: str = "gemini", model: str = None, temperature: float =
             **extra,
         ))
 
-    raise ValueError(f"Unknown provider '{provider}'. Choose from: gemini, ollama, {', '.join(OPENAI_COMPATIBLE)}.")
+    raise ValueError(f"Unknown provider '{provider}'. Choose from: gemini, {', '.join(OPENAI_COMPATIBLE)}.")
