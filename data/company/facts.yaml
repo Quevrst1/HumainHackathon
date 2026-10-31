@@ -1,4 +1,4 @@
-# Sahab: company facts. Sources for every rule are in data/DATA_LOG.md.
+# Sahab: company facts. The sources for these rules are listed in the README.
 # Amounts in SAR. Only information a real company would hold; every rule comes from a real source.
 
 company:

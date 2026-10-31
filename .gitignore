@@ -12,5 +12,6 @@ results/
 # Raw downloads (re-fetch with the scripts)
 data/research/raw/
 
-# Markdown files are local-only (docs, data log, company docs)
+# Markdown files are local-only, except the README
 *.md
+!README.md
