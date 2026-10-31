@@ -56,3 +56,10 @@ def test_agent_prompt_is_generic():
 def test_agent_prompt_has_date_and_record_rule():
     p = build_agent_prompt({"company": {}}, date(2026, 11, 1))
     assert "2026-11-01" in p and "even if you fix it" in p
+
+
+def test_agent_prompt_asks_for_specifics_and_measurable_acceptance():
+    p = build_agent_prompt({"company": {}}, date(2026, 11, 1))
+    assert "the usual" in p and "measurable" in p
+    for word in ["cleaning", "service level", "SLA", "inspection"]:   # still generic: no planted-problem names
+        assert word.lower() not in p.lower()

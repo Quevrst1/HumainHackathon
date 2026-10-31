@@ -3,7 +3,7 @@ pair: cleaning
 variant: clean
 type: non_tech
 category: facilities_service
-holdout: true
+holdout: false
 opening_request: "Our cleaning contract ends soon. We need a new cleaning company for the Riyadh and Dammam offices."
 requester:
   name: Abdullah Al-Shehri

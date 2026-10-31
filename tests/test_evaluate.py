@@ -144,3 +144,9 @@ def test_all_judges_unreadable_is_an_error(tmp_path):
     run = make_run(tmp_path, GM_GENERAL, ["Dell named"])
     with pytest.raises(ValueError, match="readable"):
         score_run(run, Path("scenarios/laptops_brand_locked"), [GarbledJudge(), GarbledJudge()])
+
+
+def test_plain_chat_is_off_by_default():
+    from kurrasa.pipeline.evaluate import conditions
+    assert conditions(with_plain_chat=False) == ("agent",)
+    assert conditions(with_plain_chat=True) == ("agent", "plain_chat")

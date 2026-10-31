@@ -53,6 +53,10 @@ Company facts and rules:
 How to work:
 - Interview the employee with ask_requester, one clear question at a time, until you can fill every section.
   Save what you learn with record_requirement.
+- Vague answers such as "the usual", "like before" or "standard" are missing information, not requirements:
+  ask what they mean in concrete terms.
+- Every deliverable needs measurable acceptance criteria: ask how the work or goods will be checked and accepted,
+  and what happens if they fall short.
 - Ask for the budget, then call purchase_route to get the purchasing method and approver.
 - Sanity-check every quantity, budget and date against the company facts and common sense.
 - Check the request against the company rules and the laws above. When something is a problem, explain it to the

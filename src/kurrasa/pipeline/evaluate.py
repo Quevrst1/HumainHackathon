@@ -143,6 +143,10 @@ def summarise(rows: list[dict], k: int = 3) -> list[dict]:
     return out
 
 
+def conditions(with_plain_chat: bool) -> tuple[str, ...]:
+    return ("agent", "plain_chat") if with_plain_chat else ("agent",)
+
+
 def group_of(name: str) -> str:
     return "holdout" if yaml.safe_load((SCENARIOS / name / "scenario.yaml").read_text(encoding="utf-8"))["holdout"] else "main"
 
@@ -213,6 +217,7 @@ def main():
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--scenarios", nargs="*", help="default: all scenarios")
     parser.add_argument("--rescore", action="store_true", help="only re-score runs already saved in results/")
+    parser.add_argument("--with-plain-chat", action="store_true", help="also run the plain-chat comparison")
     args = parser.parse_args()
 
     names = args.scenarios or sorted(p.name for p in SCENARIOS.iterdir() if p.is_dir())
@@ -223,17 +228,19 @@ def main():
     else:
         agent_llm = create_llm(**AGENT_MODELS["agent"])
         requester_llm = create_llm(**AGENT_MODELS["requester"])
-        rows, total = [], len(names) * args.runs * 2
-        log(f"experiment: {len(names)} scenarios x {args.runs} runs x 2 conditions = {total} runs")
+        chosen = conditions(args.with_plain_chat)
+        rows, total = [], len(names) * args.runs * len(chosen)
+        log(f"experiment: {len(names)} scenarios x {args.runs} runs x {len(chosen)} condition(s) = {total} runs")
         log(f"agent and requester: {AGENT_MODELS['agent']['model']} | judges: {', '.join(j['model'] for j in JUDGE_MODELS)}")
         for name in names:
             for i in range(1, args.runs + 1):
                 rows.append(scored_row(name, "agent", i, lambda: score_run(
                     run_scenario(name, f"eval{i}", agent_llm, requester_llm, verbose=False, listener=log_step),
                     SCENARIOS / name, judges), label=f"[{len(rows) + 1}/{total}] "))
-                rows.append(scored_row(name, "plain_chat", i, lambda: score_run(
-                    run_plain_chat(name, f"eval{i}", agent_llm, requester_llm), SCENARIOS / name, judges),
-                    label=f"[{len(rows) + 1}/{total}] "))
+                if "plain_chat" in chosen:
+                    rows.append(scored_row(name, "plain_chat", i, lambda: score_run(
+                        run_plain_chat(name, f"eval{i}", agent_llm, requester_llm), SCENARIOS / name, judges),
+                        label=f"[{len(rows) + 1}/{total}] "))
         log("all runs finished")
 
     write_summary(rows, k=args.runs)
